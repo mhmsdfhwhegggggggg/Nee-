@@ -24,6 +24,8 @@ tags:
     description: Homepage media slides
   - name: admin
     description: Admin operations
+  - name: contact
+    description: Contact information
 
 paths:
   /healthz:
@@ -545,6 +547,36 @@ paths:
         "401":
           description: Not authenticated
 
+  /contact-info:
+    get:
+      operationId: getContactInfo
+      tags: [contact]
+      summary: Get contact information
+      responses:
+        "200":
+          description: Contact info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactInfo"
+    patch:
+      operationId: updateContactInfo
+      tags: [contact, admin]
+      summary: Update contact information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactInfoBody"
+      responses:
+        "200":
+          description: Updated contact info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactInfo"
+
 components:
   schemas:
     HealthStatus:
@@ -571,6 +603,18 @@ components:
         programType:
           type: string
         message:
+          type: ["string", "null"]
+        certificateImageUrl:
+          type: ["string", "null"]
+        gpa:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        universityChoice1:
+          type: ["string", "null"]
+        universityChoice2:
+          type: ["string", "null"]
+        universityChoice3:
           type: ["string", "null"]
         status:
           type: string
@@ -601,6 +645,18 @@ components:
         programType:
           type: string
         message:
+          type: string
+        certificateImageUrl:
+          type: string
+        gpa:
+          type: string
+        department:
+          type: string
+        universityChoice1:
+          type: string
+        universityChoice2:
+          type: string
+        universityChoice3:
           type: string
       required:
         - fullName
@@ -870,6 +926,70 @@ components:
         partners:
           type: integer
 
+    Slide:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+      required:
+        - id
+        - title
+        - url
+        - type
+        - active
+        - order
+
+    CreateSlideBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+      required:
+        - title
+        - url
+        - type
+
+    UpdateSlideBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+
     AdminDashboard:
       type: object
       properties:
@@ -919,6 +1039,8 @@ components:
           type: boolean
         message:
           type: string
+        token:
+          type: string
       required:
         - success
         - message
@@ -934,73 +1056,92 @@ components:
         - username
         - isAdmin
 
-    Slide:
+    ContactInfo:
       type: object
       properties:
         id:
           type: integer
-        title:
+        phone1:
           type: string
-        subtitle:
-          type: ["string", "null"]
-        url:
+        phone2:
           type: string
-        type:
+        email1:
           type: string
-          enum: [image, video]
-        active:
-          type: boolean
-        order:
-          type: integer
-        createdAt:
+        email2:
           type: string
-          format: date-time
+        address:
+          type: string
+        addressDetail:
+          type: string
+        workHours:
+          type: string
+        workHoursOff:
+          type: string
+        facebookUrl:
+          type: string
+        twitterUrl:
+          type: string
+        instagramUrl:
+          type: string
+        youtubeUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        whatsappNumber:
+          type: string
+        mapEmbedUrl:
+          type: string
       required:
         - id
-        - title
-        - url
-        - type
-        - active
-        - order
-        - createdAt
+        - phone1
+        - phone2
+        - email1
+        - email2
+        - address
+        - addressDetail
+        - workHours
+        - workHoursOff
+        - facebookUrl
+        - twitterUrl
+        - instagramUrl
+        - youtubeUrl
+        - linkedinUrl
+        - whatsappNumber
+        - mapEmbedUrl
 
-    CreateSlideBody:
+    UpdateContactInfoBody:
       type: object
       properties:
-        title:
+        phone1:
           type: string
-        subtitle:
+        phone2:
           type: string
-        url:
+        email1:
           type: string
-        type:
+        email2:
           type: string
-          enum: [image, video]
-        active:
-          type: boolean
-        order:
-          type: integer
-      required:
-        - title
-        - url
-        - type
-
-    UpdateSlideBody:
-      type: object
-      properties:
-        title:
+        address:
           type: string
-        subtitle:
+        addressDetail:
           type: string
-        url:
+        workHours:
           type: string
-        type:
+        workHoursOff:
           type: string
-          enum: [image, video]
-        active:
-          type: boolean
-        order:
-          type: integer
+        facebookUrl:
+          type: string
+        twitterUrl:
+          type: string
+        instagramUrl:
+          type: string
+        youtubeUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        whatsappNumber:
+          type: string
+        mapEmbedUrl:
+          type: string
 
     UpdateSlideParams:
       type: object

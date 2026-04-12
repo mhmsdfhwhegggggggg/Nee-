@@ -12,7 +12,6 @@ import Contact from "./Contact";
 import FindUs from "./FindUs";
 import NotFound from "./not-found";
 
-// Admin
 import AdminLogin from "./admin/Login";
 import Dashboard from "./admin/Dashboard";
 import Registrations from "./admin/Registrations";
@@ -21,11 +20,11 @@ import AdminPartners from "./admin/Partners";
 import Team from "./admin/Team";
 import Stats from "./admin/Stats";
 import Slides from "./admin/Slides";
+import ContactInfoAdmin from "./admin/ContactInfo";
 
 export default function AppRoutes() {
   return (
     <Switch>
-      {/* Admin Routes without main Layout */}
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={Dashboard} />
       <Route path="/admin/registrations" component={Registrations} />
@@ -34,8 +33,8 @@ export default function AppRoutes() {
       <Route path="/admin/team" component={Team} />
       <Route path="/admin/stats" component={Stats} />
       <Route path="/admin/slides" component={Slides} />
+      <Route path="/admin/contact-info" component={ContactInfoAdmin} />
 
-      {/* Public Routes with Layout */}
       <Route path="/.*">
         <Layout>
           <Switch>

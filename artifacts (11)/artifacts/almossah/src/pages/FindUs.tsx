@@ -1,6 +1,9 @@
 import { MapPin, Navigation, Compass } from "lucide-react";
+import { useGetContactInfo } from "@workspace/api-client-react";
 
 export default function FindUs() {
+  const { data: contact } = useGetContactInfo();
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <section className="bg-primary text-white py-16 text-center">
@@ -16,7 +19,7 @@ export default function FindUs() {
                 <MapPin size={24} />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">المركز الرئيسي - صنعاء</h3>
-              <p className="text-gray-600 mb-4">شارع الزبيري، تقاطع شارع بغداد، مبنى المركز التجاري، الطابق الثالث.</p>
+              <p className="text-gray-600 mb-4">{contact?.address || "شارع الزبيري"}{contact?.addressDetail ? `، ${contact.addressDetail}` : ""}</p>
               <div className="text-sm text-primary font-medium flex items-center gap-1 cursor-pointer">
                 <Navigation size={14} />
                 <span>عرض على الخريطة</span>
@@ -54,7 +57,7 @@ export default function FindUs() {
             <p className="text-gray-600 mb-6 max-w-xl mx-auto">
               فريق خدمة العملاء متاح لمساعدتك في الوصول إلى أقرب فرع لك. يمكنك الاتصال بنا وسنقوم بتزويدك بالاتجاهات الدقيقة.
             </p>
-            <p className="text-xl font-bold text-primary" dir="ltr">+967 1 234 567</p>
+            <p className="text-xl font-bold text-primary" dir="ltr">{contact?.phone1 || "+967 1 234 567"}</p>
           </div>
         </div>
       </section>

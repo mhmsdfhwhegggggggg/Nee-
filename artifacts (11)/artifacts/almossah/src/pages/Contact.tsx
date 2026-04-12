@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useGetContactInfo } from "@workspace/api-client-react";
 
 export default function Contact() {
   const { toast } = useToast();
+  const { data: contact } = useGetContactInfo();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,6 @@ export default function Contact() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="grid md:grid-cols-2 gap-12">
             
-            {/* Contact Info */}
             <div className="space-y-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-6">معلومات التواصل</h2>
               
@@ -36,7 +37,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">العنوان الرئيسي</h3>
-                  <p className="text-gray-600">الجمهورية اليمنية، أمانة العاصمة، شارع الزبيري، تقاطع شارع بغداد، مبنى المركز التجاري.</p>
+                  <p className="text-gray-600">{contact?.address || "الجمهورية اليمنية، أمانة العاصمة، شارع الزبيري"}{contact?.addressDetail ? `، ${contact.addressDetail}` : ""}</p>
                 </div>
               </div>
 
@@ -46,8 +47,8 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">الهاتف</h3>
-                  <p className="text-gray-600" dir="ltr">+967 1 234 567</p>
-                  <p className="text-gray-600" dir="ltr">+967 777 123 456</p>
+                  <p className="text-gray-600" dir="ltr">{contact?.phone1 || "+967 1 234 567"}</p>
+                  <p className="text-gray-600" dir="ltr">{contact?.phone2 || "+967 777 123 456"}</p>
                 </div>
               </div>
 
@@ -57,8 +58,8 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">البريد الإلكتروني</h3>
-                  <p className="text-gray-600">info@almossah.org</p>
-                  <p className="text-gray-600">support@almossah.org</p>
+                  <p className="text-gray-600">{contact?.email1 || "info@almossah.org"}</p>
+                  <p className="text-gray-600">{contact?.email2 || "support@almossah.org"}</p>
                 </div>
               </div>
 
@@ -68,13 +69,12 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">ساعات العمل</h3>
-                  <p className="text-gray-600">السبت - الخميس: 8:00 صباحاً - 4:00 مساءً</p>
-                  <p className="text-gray-600">الجمعة: مغلق</p>
+                  <p className="text-gray-600">{contact?.workHours || "السبت - الخميس: 8:00 صباحاً - 4:00 مساءً"}</p>
+                  <p className="text-gray-600">{contact?.workHoursOff || "الجمعة: مغلق"}</p>
                 </div>
               </div>
             </div>
 
-            {/* Contact Form */}
             <div className="bg-gray-50 p-8 rounded-2xl border border-gray-100 shadow-sm">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">أرسل رسالة</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -104,12 +104,23 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* Map */}
       <section className="h-[400px] w-full bg-gray-200">
-        {/* Placeholder for iframe map */}
-        <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-100 border-t border-gray-200">
-          خريطة الموقع (Google Maps Embed)
-        </div>
+        {contact?.mapEmbedUrl ? (
+          <iframe
+            src={contact.mapEmbedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="موقع المؤسسة على الخريطة"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-100 border-t border-gray-200">
+            خريطة الموقع (Google Maps Embed)
+          </div>
+        )}
       </section>
     </div>
   );

@@ -7,6 +7,7 @@ import teamRouter from "./team";
 import statsRouter from "./stats";
 import slidesRouter from "./slides";
 import adminRouter from "./admin";
+import contactInfoRouter from "./contact-info";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(teamRouter);
 router.use(statsRouter);
 router.use(slidesRouter);
 router.use(adminRouter);
+router.use(contactInfoRouter);
 
 export default router;

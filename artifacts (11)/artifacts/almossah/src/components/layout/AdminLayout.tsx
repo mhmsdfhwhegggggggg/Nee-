@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useGetAdminMe } from "@workspace/api-client-react";
-import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
@@ -82,18 +82,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { href: "/admin/partners", label: "شركاء النجاح", icon: <Handshake size={20} /> },
     { href: "/admin/team", label: "فريق العمل", icon: <Settings size={20} /> },
     { href: "/admin/stats", label: "الإحصائيات", icon: <BarChart size={20} /> },
+    { href: "/admin/contact-info", label: "معلومات التواصل", icon: <Phone size={20} /> },
   ];
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans" dir="rtl">
-      {/* Mobile toggle */}
       <div className="lg:hidden fixed top-4 right-4 z-50">
         <Button variant="outline" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
           <Menu />
         </Button>
       </div>
 
-      {/* Sidebar */}
       <aside className={`fixed inset-y-0 right-0 z-40 w-64 bg-slate-900 text-white transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col`}>
         <div className="p-5 flex items-center gap-3 border-b border-slate-800 shrink-0">
           <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
@@ -135,7 +134,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 lg:mr-64 overflow-y-auto w-full">
         <div className="p-6 mt-12 lg:mt-0 max-w-7xl mx-auto">
           {children}
