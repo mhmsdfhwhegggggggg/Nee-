@@ -58,7 +58,7 @@ export function Header() {
       }`}
     >
       <div className="container mx-auto px-6">
-        <div className="flex items-center justify-between h-[84px]">
+        <div className="flex items-center justify-between h-[110px]">
 
           {/* Logo — full brand image */}
           <Link href="/">
@@ -66,7 +66,7 @@ export function Header() {
               <img
                 src="/brand-logo.jpg"
                 alt="المؤسسة الوطنية للتنمية الشاملة"
-                className="h-[76px] w-auto object-contain"
+                className="h-[100px] w-auto object-contain"
                 style={{ mixBlendMode: "multiply" }}
               />
             </div>
