@@ -7,7 +7,7 @@ import crypto from "crypto";
 const router: IRouter = Router();
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
 
 // In-memory token store: token -> username
 const adminTokens = new Map<string, string>();
@@ -59,6 +59,28 @@ router.post("/admin/logout", async (req, res): Promise<void> => {
   }
   req.session.destroy(() => {});
   res.json({ success: true, message: "تم تسجيل الخروج" });
+});
+
+router.post("/admin/change-password", async (req, res): Promise<void> => {
+  if (!isAuthenticated(req)) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, message: "يرجى إدخال كلمة المرور الحالية والجديدة" });
+    return;
+  }
+  if (currentPassword !== ADMIN_PASSWORD) {
+    res.status(401).json({ success: false, message: "كلمة المرور الحالية غير صحيحة" });
+    return;
+  }
+  if (newPassword.length < 6) {
+    res.status(400).json({ success: false, message: "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل" });
+    return;
+  }
+  ADMIN_PASSWORD = newPassword;
+  res.json({ success: true, message: "تم تغيير كلمة المرور بنجاح" });
 });
 
 router.get("/admin/me", async (req, res): Promise<void> => {
