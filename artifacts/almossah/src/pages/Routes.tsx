@@ -21,6 +21,7 @@ import Team from "./admin/Team";
 import Stats from "./admin/Stats";
 import Slides from "./admin/Slides";
 import ContactInfoAdmin from "./admin/ContactInfo";
+import Settings from "./admin/Settings";
 
 export default function AppRoutes() {
   return (
@@ -34,6 +35,7 @@ export default function AppRoutes() {
       <Route path="/admin/stats" component={Stats} />
       <Route path="/admin/slides" component={Slides} />
       <Route path="/admin/contact-info" component={ContactInfoAdmin} />
+      <Route path="/admin/settings" component={Settings} />
 
       <Route path="/.*">
         <Layout>
