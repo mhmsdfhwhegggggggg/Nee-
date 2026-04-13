@@ -1,3 +1,4 @@
+import { Layout } from "@/components/layout/Layout";
 import { Link } from "wouter";
 import { useListTeam } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
@@ -12,7 +13,7 @@ export default function About() {
         <div className="absolute inset-0 bg-black/40 z-10" />
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay" />
         <div className="container mx-auto px-4 z-20 text-center text-white">
-          <motion.h1
+          <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-bold mb-4"
@@ -34,10 +35,10 @@ export default function About() {
             <div>
               <h2 className="text-3xl font-bold text-primary mb-6">من نحن</h2>
               <p className="text-gray-600 leading-relaxed mb-6 text-lg">
-                المؤسسة الوطنية للتنمية الشاملة مؤسسة متخصصة في تقديم الخدمات التعليمية والتأمين الصحي، تسعى إلى تمكين المواطن اليمني من الوصول إلى التعليم الجيد والرعاية الصحية بأسعار ميسورة.
+                المؤسسة الوطنية هي مؤسسة تنموية رائدة تسعى لتقديم خدمات تعليمية وطبية وتنموية متميزة، للمساهمة في بناء مجتمع معرفي وصحي متكامل، وفقاً لأعلى معايير الجودة الشاملة.
               </p>
               <p className="text-gray-600 leading-relaxed text-lg">
-                نعمل من خلال رؤية واضحة تهدف إلى الارتقاء بمستوى الخدمات التعليمية والصحية المقدمة للمواطن اليمني، مع التركيز على الطلاب والشباب من خلال منح دراسية وتخفيضات جامعية ودورات تدريبية وبطاقات تأمين صحي شاملة.
+                نعمل من خلال رؤية واضحة ورسالة سامية تهدف إلى الارتقاء بالخدمات المقدمة للمواطن اليمني في مختلف المجالات، مع التركيز على الشباب والطلاب لبناء جيل قادر على صناعة المستقبل.
               </p>
             </div>
             <div className="rounded-2xl overflow-hidden shadow-lg h-[400px]">
@@ -57,7 +58,7 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">رؤيتنا</h3>
               <p className="text-gray-600 leading-relaxed text-lg">
-                أن نكون المؤسسة الرائدة في تقديم الخدمات التعليمية والتأمين الصحي في اليمن، ونموذجاً يُحتذى به في تيسير وصول الطلاب اليمنيين إلى التعليم العالي والرعاية الصحية.
+                أن نكون المؤسسة الرائدة والأولى في تقديم الخدمات التعليمية والطبية والتنموية في اليمن، وصناعة نموذج يحتذى به في العمل المؤسسي التنموي.
               </p>
             </div>
             <div className="bg-white p-10 rounded-2xl shadow-sm border border-gray-100" id="mission">
@@ -66,64 +67,39 @@ export default function About() {
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">رسالتنا</h3>
               <p className="text-gray-600 leading-relaxed text-lg">
-                توفير منح دراسية وتخفيضات جامعية ودورات تدريبية متخصصة، إلى جانب بطاقات تأمين صحي شاملة، لمساعدة أبناء اليمن على مواصلة مسيرتهم التعليمية والحصول على رعاية صحية لائقة.
+                تقديم خدمات نوعية وشاملة تلبي احتياجات المجتمع اليمني، وتساهم في تخفيف المعاناة وبناء القدرات وتمكين الشباب من خلال برامج مستدامة وشراكات فاعلة.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* What we offer */}
-      <section className="py-20 bg-white">
+      {/* Team */}
+      <section className="py-20" id="team">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">ما نقدمه</h2>
-            <div className="w-16 h-1 bg-primary mx-auto rounded-full" />
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">فريق العمل</h2>
+            <div className="w-16 h-1 bg-primary mx-auto rounded-full"></div>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { emoji: "🎓", title: "المنح الدراسية", desc: "منح كاملة وجزئية للطلاب المتفوقين في مختلف التخصصات الجامعية" },
-              { emoji: "🏫", title: "التخفيضات الجامعية", desc: "خصومات تصل إلى 70% على رسوم التسجيل في الجامعات الشريكة" },
-              { emoji: "📚", title: "الدورات التدريبية", desc: "دورات في اللغة الإنجليزية والحاسوب ومهارات سوق العمل" },
-              { emoji: "🏥", title: "التأمين الصحي", desc: "بطاقات تأمين صحي شاملة تغطي الفرد والأسرة في المستشفيات المعتمدة" },
-            ].map(item => (
-              <div key={item.title} className="bg-[#F8F5F0] rounded-2xl p-7 text-center hover:shadow-md transition-all group">
-                <div className="text-4xl mb-4">{item.emoji}</div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+
+          <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {teamList?.items?.map((member) => (
+              <div key={member.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 text-center p-6 hover:shadow-md transition-shadow">
+                <div className="w-32 h-32 mx-auto rounded-full overflow-hidden mb-4 border-4 border-gray-50">
+                  <img 
+                    src={member.imageUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200'} 
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{member.name}</h3>
+                <p className="text-primary text-sm font-medium mb-3">{member.role}</p>
+                {member.bio && <p className="text-gray-500 text-sm text-center">{member.bio}</p>}
               </div>
             ))}
           </div>
         </div>
       </section>
-
-      {/* Team */}
-      {teamList && teamList.items && teamList.items.length > 0 && (
-        <section className="py-20 bg-gray-50" id="team">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">فريق العمل</h2>
-              <div className="w-16 h-1 bg-primary mx-auto rounded-full" />
-            </div>
-            <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-8">
-              {teamList.items.map((member) => (
-                <div key={member.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 text-center p-6 hover:shadow-md transition-shadow">
-                  <div className="w-32 h-32 mx-auto rounded-full overflow-hidden mb-4 border-4 border-gray-50">
-                    <img
-                      src={member.imageUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200'}
-                      alt={member.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">{member.name}</h3>
-                  <p className="text-primary text-sm font-medium mb-3">{member.role}</p>
-                  {member.bio && <p className="text-gray-500 text-sm text-center">{member.bio}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   );
 }
