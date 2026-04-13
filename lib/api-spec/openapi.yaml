@@ -1,0 +1,1160 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API for المؤسسة الوطنية website
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: registrations
+    description: Registration form submissions
+  - name: news
+    description: News and events management
+  - name: partners
+    description: Success partners (universities, institutes)
+  - name: team
+    description: Team members
+  - name: stats
+    description: Site statistics
+  - name: slides
+    description: Homepage media slides
+  - name: admin
+    description: Admin operations
+  - name: contact
+    description: Contact information
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /registrations:
+    get:
+      operationId: listRegistrations
+      tags: [registrations, admin]
+      summary: List all registration requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of registrations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationList"
+    post:
+      operationId: createRegistration
+      tags: [registrations]
+      summary: Submit a new registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRegistrationBody"
+      responses:
+        "201":
+          description: Registration created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "400":
+          description: Invalid input
+
+  /registrations/{id}:
+    get:
+      operationId: getRegistration
+      tags: [registrations, admin]
+      summary: Get a single registration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Registration detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateRegistration
+      tags: [registrations, admin]
+      summary: Update registration status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRegistrationBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+    delete:
+      operationId: deleteRegistration
+      tags: [registrations, admin]
+      summary: Delete a registration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /news:
+    get:
+      operationId: listNews
+      tags: [news]
+      summary: List news and events
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [news, event]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: News list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsList"
+    post:
+      operationId: createNews
+      tags: [news, admin]
+      summary: Create news item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNewsBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+
+  /news/{id}:
+    get:
+      operationId: getNews
+      tags: [news]
+      summary: Get single news item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: News item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateNews
+      tags: [news, admin]
+      summary: Update news item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNewsBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+    delete:
+      operationId: deleteNews
+      tags: [news, admin]
+      summary: Delete news item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /partners:
+    get:
+      operationId: listPartners
+      tags: [partners]
+      summary: List success partners
+      responses:
+        "200":
+          description: Partners list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Partner"
+    post:
+      operationId: createPartner
+      tags: [partners, admin]
+      summary: Add a partner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartnerBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+
+  /partners/{id}:
+    patch:
+      operationId: updatePartner
+      tags: [partners, admin]
+      summary: Update a partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePartnerBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Partner"
+    delete:
+      operationId: deletePartner
+      tags: [partners, admin]
+      summary: Delete a partner
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /team:
+    get:
+      operationId: listTeam
+      tags: [team]
+      summary: List team members
+      responses:
+        "200":
+          description: Team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamMember"
+    post:
+      operationId: createTeamMember
+      tags: [team, admin]
+      summary: Add team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamMemberBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+
+  /team/{id}:
+    patch:
+      operationId: updateTeamMember
+      tags: [team, admin]
+      summary: Update team member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamMemberBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+    delete:
+      operationId: deleteTeamMember
+      tags: [team, admin]
+      summary: Delete team member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get site statistics
+      responses:
+        "200":
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteStats"
+    patch:
+      operationId: updateStats
+      tags: [stats, admin]
+      summary: Update site statistics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatsBody"
+      responses:
+        "200":
+          description: Updated stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteStats"
+
+  /slides:
+    get:
+      operationId: listSlides
+      tags: [slides]
+      summary: List homepage media slides
+      responses:
+        "200":
+          description: Slides list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slide"
+    post:
+      operationId: createSlide
+      tags: [slides, admin]
+      summary: Add a homepage slide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSlideBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slide"
+
+  /slides/{id}:
+    patch:
+      operationId: updateSlide
+      tags: [slides, admin]
+      summary: Update a slide
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSlideBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slide"
+    delete:
+      operationId: deleteSlide
+      tags: [slides, admin]
+      summary: Delete a slide
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [admin]
+      summary: Get admin dashboard summary
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginBody"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLoginResponse"
+        "401":
+          description: Invalid credentials
+
+  /admin/logout:
+    post:
+      operationId: adminLogout
+      tags: [admin]
+      summary: Admin logout
+      responses:
+        "200":
+          description: Logged out
+
+  /admin/me:
+    get:
+      operationId: getAdminMe
+      tags: [admin]
+      summary: Check admin session
+      responses:
+        "200":
+          description: Admin info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminInfo"
+        "401":
+          description: Not authenticated
+
+  /contact-info:
+    get:
+      operationId: getContactInfo
+      tags: [contact]
+      summary: Get contact information
+      responses:
+        "200":
+          description: Contact info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactInfo"
+    patch:
+      operationId: updateContactInfo
+      tags: [contact, admin]
+      summary: Update contact information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactInfoBody"
+      responses:
+        "200":
+          description: Updated contact info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactInfo"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Registration:
+      type: object
+      properties:
+        id:
+          type: integer
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        programType:
+          type: string
+        message:
+          type: ["string", "null"]
+        certificateImageUrl:
+          type: ["string", "null"]
+        gpa:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        universityChoice1:
+          type: ["string", "null"]
+        universityChoice2:
+          type: ["string", "null"]
+        universityChoice3:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        createdAt:
+          type: string
+      required:
+        - id
+        - fullName
+        - email
+        - phone
+        - city
+        - programType
+        - status
+        - createdAt
+
+    CreateRegistrationBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        programType:
+          type: string
+        message:
+          type: string
+        certificateImageUrl:
+          type: string
+        gpa:
+          type: string
+        department:
+          type: string
+        universityChoice1:
+          type: string
+        universityChoice2:
+          type: string
+        universityChoice3:
+          type: string
+      required:
+        - fullName
+        - email
+        - phone
+        - city
+        - programType
+
+    UpdateRegistrationBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+
+    RegistrationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Registration"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - limit
+
+    NewsItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [news, event]
+        published:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - excerpt
+        - content
+        - type
+        - published
+        - createdAt
+
+    CreateNewsBody:
+      type: object
+      properties:
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        imageUrl:
+          type: string
+        type:
+          type: string
+          enum: [news, event]
+        published:
+          type: boolean
+      required:
+        - title
+        - excerpt
+        - content
+        - type
+
+    UpdateNewsBody:
+      type: object
+      properties:
+        title:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        imageUrl:
+          type: string
+        type:
+          type: string
+          enum: [news, event]
+        published:
+          type: boolean
+
+    NewsList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewsItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - limit
+
+    Partner:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logoUrl:
+          type: string
+        website:
+          type: ["string", "null"]
+        type:
+          type: string
+          enum: [university, institute, company, organization]
+        order:
+          type: integer
+      required:
+        - id
+        - name
+        - logoUrl
+        - type
+        - order
+
+    CreatePartnerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+        website:
+          type: string
+        type:
+          type: string
+          enum: [university, institute, company, organization]
+        order:
+          type: integer
+      required:
+        - name
+        - logoUrl
+        - type
+
+    UpdatePartnerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+        website:
+          type: string
+        type:
+          type: string
+          enum: [university, institute, company, organization]
+        order:
+          type: integer
+
+    TeamMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+        bio:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        order:
+          type: integer
+      required:
+        - id
+        - name
+        - role
+        - order
+
+    CreateTeamMemberBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        bio:
+          type: string
+        imageUrl:
+          type: string
+        order:
+          type: integer
+      required:
+        - name
+        - role
+
+    UpdateTeamMemberBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        bio:
+          type: string
+        imageUrl:
+          type: string
+        order:
+          type: integer
+
+    SiteStats:
+      type: object
+      properties:
+        yearsExperience:
+          type: integer
+        programs:
+          type: integer
+        beneficiaries:
+          type: integer
+        experts:
+          type: integer
+        universities:
+          type: integer
+        partners:
+          type: integer
+      required:
+        - yearsExperience
+        - programs
+        - beneficiaries
+        - experts
+        - universities
+        - partners
+
+    UpdateStatsBody:
+      type: object
+      properties:
+        yearsExperience:
+          type: integer
+        programs:
+          type: integer
+        beneficiaries:
+          type: integer
+        experts:
+          type: integer
+        universities:
+          type: integer
+        partners:
+          type: integer
+
+    Slide:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+      required:
+        - id
+        - title
+        - url
+        - type
+        - active
+        - order
+
+    CreateSlideBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+      required:
+        - title
+        - url
+        - type
+
+    UpdateSlideBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: string
+        url:
+          type: string
+        type:
+          type: string
+          enum: [image, video]
+        active:
+          type: boolean
+        order:
+          type: integer
+
+    AdminDashboard:
+      type: object
+      properties:
+        totalRegistrations:
+          type: integer
+        pendingRegistrations:
+          type: integer
+        approvedRegistrations:
+          type: integer
+        rejectedRegistrations:
+          type: integer
+        totalNews:
+          type: integer
+        totalPartners:
+          type: integer
+        totalTeamMembers:
+          type: integer
+        recentRegistrations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Registration"
+      required:
+        - totalRegistrations
+        - pendingRegistrations
+        - approvedRegistrations
+        - rejectedRegistrations
+        - totalNews
+        - totalPartners
+        - totalTeamMembers
+        - recentRegistrations
+
+    AdminLoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    AdminLoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        token:
+          type: string
+      required:
+        - success
+        - message
+
+    AdminInfo:
+      type: object
+      properties:
+        username:
+          type: string
+        isAdmin:
+          type: boolean
+      required:
+        - username
+        - isAdmin
+
+    ContactInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        phone1:
+          type: string
+        phone2:
+          type: string
+        email1:
+          type: string
+        email2:
+          type: string
+        address:
+          type: string
+        addressDetail:
+          type: string
+        workHours:
+          type: string
+        workHoursOff:
+          type: string
+        facebookUrl:
+          type: string
+        twitterUrl:
+          type: string
+        instagramUrl:
+          type: string
+        youtubeUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        whatsappNumber:
+          type: string
+        mapEmbedUrl:
+          type: string
+      required:
+        - id
+        - phone1
+        - phone2
+        - email1
+        - email2
+        - address
+        - addressDetail
+        - workHours
+        - workHoursOff
+        - facebookUrl
+        - twitterUrl
+        - instagramUrl
+        - youtubeUrl
+        - linkedinUrl
+        - whatsappNumber
+        - mapEmbedUrl
+
+    UpdateContactInfoBody:
+      type: object
+      properties:
+        phone1:
+          type: string
+        phone2:
+          type: string
+        email1:
+          type: string
+        email2:
+          type: string
+        address:
+          type: string
+        addressDetail:
+          type: string
+        workHours:
+          type: string
+        workHoursOff:
+          type: string
+        facebookUrl:
+          type: string
+        twitterUrl:
+          type: string
+        instagramUrl:
+          type: string
+        youtubeUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        whatsappNumber:
+          type: string
+        mapEmbedUrl:
+          type: string
+
+    UpdateSlideParams:
+      type: object
+      properties:
+        id:
+          type: integer
+      required:
+        - id
+
+    DeleteSlideParams:
+      type: object
+      properties:
+        id:
+          type: integer
+      required:
+        - id
