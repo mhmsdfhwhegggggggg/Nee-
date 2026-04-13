@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
   GraduationCap, Stethoscope, CheckCircle2, ArrowLeft,
-  BookOpen, University, Award, HeartPulse, Pill, Hospital,
+  BookOpen, University, Award, HeartPulse, FlaskConical, Hospital,
 } from "lucide-react";
 
 export default function Services() {
@@ -186,7 +186,7 @@ export default function Services() {
                 {[
                   { icon: <Hospital size={18} />, title: "مستشفيات معتمدة", desc: "شبكة من أفضل المستشفيات والمراكز الطبية في اليمن" },
                   { icon: <Stethoscope size={18} />, title: "استشارات طبية", desc: "زيارات طبية وفحوصات دورية بأسعار مدعومة" },
-                  { icon: <Pill size={18} />, title: "صيدليات معتمدة", desc: "خصومات على الأدوية في صيدليات ضمن شبكتنا" },
+                  { icon: <FlaskConical size={18} />, title: "مختبرات طبية", desc: "فحوصات مخبرية وتحاليل طبية بأسعار مدعومة في مختبرات معتمدة" },
                   { icon: <HeartPulse size={18} />, title: "تغطية الأسرة", desc: "باقات تشمل الفرد أو الأسرة بالكامل بأسعار مرنة" },
                 ].map(({ icon, title, desc }) => (
                   <div key={title} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all group">
