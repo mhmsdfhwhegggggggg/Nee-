@@ -1,31 +1,32 @@
 import { Link } from "wouter";
 import { Phone, Mail, MapPin } from "lucide-react";
 import { FaFacebook, FaTwitter, FaInstagram, FaYoutube } from "react-icons/fa";
+import { useGetContactInfo } from "@workspace/api-client-react";
 
 export function Footer() {
+  const { data: contact } = useGetContactInfo();
+
   return (
     <footer className="bg-[#1a1a1a] text-gray-300 pt-16 pb-8 border-t-4 border-primary">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-
-          {/* Column 1: About */}
+          
           <div>
             <div className="flex items-center gap-3 mb-6 bg-white/5 p-2 rounded-lg inline-flex">
               <img src="/logo.png" alt="المؤسسة الوطنية" className="h-10 w-auto object-contain bg-white rounded p-1" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               <span className="font-bold text-lg text-white">المؤسسة الوطنية</span>
             </div>
             <p className="text-gray-400 leading-relaxed mb-6 text-sm">
-              مؤسسة وطنية متخصصة في تقديم الخدمات التعليمية والتأمين الصحي، تسعى لتمكين المواطن اليمني من التعليم الجيد والرعاية الصحية بأسعار ميسورة.
+              مؤسسة وطنية رائدة تسعى لتقديم خدمات تعليمية وطبية وتنموية متميزة، للمساهمة في بناء مجتمع معرفي وصحي متكامل، وفقاً لأعلى معايير الجودة الشاملة.
             </p>
             <div className="flex items-center gap-3">
-              <a href="#" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaFacebook /></a>
-              <a href="#" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaTwitter /></a>
-              <a href="#" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaInstagram /></a>
-              <a href="#" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaYoutube /></a>
+              <a href={contact?.facebookUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaFacebook /></a>
+              <a href={contact?.twitterUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaTwitter /></a>
+              <a href={contact?.instagramUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaInstagram /></a>
+              <a href={contact?.youtubeUrl || "#"} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-primary text-white transition-colors"><FaYoutube /></a>
             </div>
           </div>
 
-          {/* Column 2: Quick Links */}
           <div>
             <h3 className="text-white font-bold text-lg mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:right-0 after:w-1/2 after:h-1 after:bg-primary">روابط سريعة</h3>
             <ul className="flex flex-col gap-3">
@@ -38,33 +39,30 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Column 3: Service Areas */}
           <div>
-            <h3 className="text-white font-bold text-lg mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:right-0 after:w-1/2 after:h-1 after:bg-primary">خدماتنا</h3>
+            <h3 className="text-white font-bold text-lg mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:right-0 after:w-1/2 after:h-1 after:bg-primary">مجالات العمل</h3>
             <ul className="flex flex-col gap-3">
+              <li><Link href="/services#education"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الخدمات التعليمية</div></Link></li>
+              <li><Link href="/services#medical"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التأمين الصحي</div></Link></li>
               <li><Link href="/programs#scholarships"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">المنح الدراسية</div></Link></li>
               <li><Link href="/programs#discounts"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التخفيضات الجامعية</div></Link></li>
-              <li><Link href="/programs#courses"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الدورات التدريبية</div></Link></li>
-              <li><Link href="/programs#insurance"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التأمين الصحي</div></Link></li>
-              <li><Link href="/register"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التسجيل في الخدمات</div></Link></li>
             </ul>
           </div>
 
-          {/* Column 4: Contact */}
           <div>
             <h3 className="text-white font-bold text-lg mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:right-0 after:w-1/2 after:h-1 after:bg-primary">تواصل معنا</h3>
             <ul className="flex flex-col gap-4">
               <li className="flex items-start gap-3">
                 <MapPin className="text-primary mt-1 shrink-0" size={18} />
-                <span className="text-sm">الجمهورية اليمنية - أمانة العاصمة - شارع الزبيري</span>
+                <span className="text-sm">{contact?.address || "الجمهورية اليمنية - أمانة العاصمة - شارع الزبيري"}</span>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="text-primary mt-1 shrink-0" size={18} />
-                <span className="text-sm" dir="ltr">+967 1 234 567<br />+967 777 123 456</span>
+                <span className="text-sm" dir="ltr">{contact?.phone1 || "+967 1 234 567"}<br />{contact?.phone2 || "+967 777 123 456"}</span>
               </li>
               <li className="flex items-start gap-3">
                 <Mail className="text-primary mt-1 shrink-0" size={18} />
-                <span className="text-sm">info@almossah.org<br />support@almossah.org</span>
+                <span className="text-sm">{contact?.email1 || "info@almossah.org"}<br />{contact?.email2 || "support@almossah.org"}</span>
               </li>
             </ul>
           </div>
@@ -73,7 +71,7 @@ export function Footer() {
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-400">
-            جميع الحقوق محفوظة © {new Date().getFullYear()} المؤسسة الوطنية للتنمية الشاملة
+            جميع الحقوق محفوظة &copy; {new Date().getFullYear()} المؤسسة الوطنية
           </p>
           <div className="flex gap-4 text-sm text-gray-400">
             <Link href="/privacy"><div className="hover:text-white cursor-pointer">سياسة الخصوصية</div></Link>
