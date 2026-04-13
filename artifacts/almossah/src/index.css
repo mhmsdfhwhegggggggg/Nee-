@@ -63,7 +63,7 @@
   
   --border: 0 0% 90%;
   --input: 0 0% 90%;
-  --ring: 0 100% 27%;
+  --ring: 0 78% 45%;
   
   --card: 0 0% 100%;
   --card-foreground: 0 0% 10%;
@@ -73,16 +73,16 @@
   --popover-foreground: 0 0% 10%;
   --popover-border: 0 0% 90%;
   
-  --primary: 0 100% 27%;
+  --primary: 0 78% 45%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 0 100% 40%;
+  --secondary: 0 78% 55%;
   --secondary-foreground: 0 0% 100%;
   
   --muted: 0 0% 96%;
   --muted-foreground: 0 0% 45%;
   
-  --accent: 113 39% 25%;
+  --accent: 145 45% 32%;
   --accent-foreground: 0 0% 100%;
   
   --destructive: 0 84% 60%;
@@ -91,11 +91,11 @@
   --sidebar: 0 0% 98%;
   --sidebar-foreground: 0 0% 10%;
   --sidebar-border: 0 0% 90%;
-  --sidebar-primary: 0 100% 27%;
+  --sidebar-primary: 0 78% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 0 0% 90%;
   --sidebar-accent-foreground: 0 0% 10%;
-  --sidebar-ring: 0 100% 27%;
+  --sidebar-ring: 0 78% 45%;
 
   --app-font-sans: 'Tajawal', sans-serif;
   --app-font-serif: 'Tajawal', sans-serif;
@@ -103,14 +103,20 @@
   
   --radius: 0.5rem;
 
-  /* Fallback borders */
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-accent-border: hsl(var(--sidebar-accent));
   --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 .dark {
@@ -118,31 +124,31 @@
   --foreground: 0 0% 98%;
   --border: 0 0% 20%;
   --input: 0 0% 20%;
-  --ring: 0 100% 27%;
+  --ring: 0 78% 45%;
   --card: 0 0% 15%;
   --card-foreground: 0 0% 98%;
   --card-border: 0 0% 20%;
   --popover: 0 0% 15%;
   --popover-foreground: 0 0% 98%;
   --popover-border: 0 0% 20%;
-  --primary: 0 100% 27%;
+  --primary: 0 78% 45%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 100% 40%;
+  --secondary: 0 78% 55%;
   --secondary-foreground: 0 0% 100%;
   --muted: 0 0% 20%;
   --muted-foreground: 0 0% 65%;
-  --accent: 113 39% 25%;
+  --accent: 145 45% 32%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 62% 30%;
   --destructive-foreground: 0 0% 100%;
   --sidebar: 0 0% 15%;
   --sidebar-foreground: 0 0% 98%;
   --sidebar-border: 0 0% 20%;
-  --sidebar-primary: 0 100% 27%;
+  --sidebar-primary: 0 78% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 0 0% 25%;
   --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 0 100% 27%;
+  --sidebar-ring: 0 78% 45%;
 }
 
 @layer base {
@@ -226,7 +232,6 @@
   }
 }
 
-/* Marquee animations */
 @keyframes marquee {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
