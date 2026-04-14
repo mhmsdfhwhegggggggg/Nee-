@@ -8,7 +8,6 @@ import express, { type Express } from "express";
 
   async function ensureTables() {
     try {
-      // Create tables if not exist
       await pool.query(`
         CREATE TABLE IF NOT EXISTS registration_form_fields (
           id SERIAL PRIMARY KEY,
@@ -20,6 +19,89 @@ import express, { type Express } from "express";
           options TEXT,
           sort_order INTEGER NOT NULL DEFAULT 0,
           enabled BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS contact_info (
+          id SERIAL PRIMARY KEY,
+          phone1 TEXT NOT NULL DEFAULT '+967 1 234 567',
+          phone2 TEXT NOT NULL DEFAULT '+967 777 123 456',
+          email1 TEXT NOT NULL DEFAULT 'info@almossah.org',
+          email2 TEXT NOT NULL DEFAULT 'support@almossah.org',
+          address TEXT NOT NULL DEFAULT 'الجمهورية اليمنية - أمانة العاصمة - شارع الزبيري',
+          address_detail TEXT NOT NULL DEFAULT 'تقاطع شارع بغداد، مبنى المركز التجاري',
+          work_hours TEXT NOT NULL DEFAULT 'السبت - الخميس: 8:00 صباحاً - 4:00 مساءً',
+          work_hours_off TEXT NOT NULL DEFAULT 'الجمعة: مغلق',
+          facebook_url TEXT NOT NULL DEFAULT '',
+          twitter_url TEXT NOT NULL DEFAULT '',
+          instagram_url TEXT NOT NULL DEFAULT '',
+          youtube_url TEXT NOT NULL DEFAULT '',
+          linkedin_url TEXT NOT NULL DEFAULT '',
+          whatsapp_number TEXT NOT NULL DEFAULT '',
+          map_embed_url TEXT NOT NULL DEFAULT '',
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS news (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          excerpt TEXT NOT NULL,
+          content TEXT NOT NULL,
+          image_url TEXT,
+          type TEXT NOT NULL DEFAULT 'news',
+          published BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS partners (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          logo_url TEXT NOT NULL,
+          website TEXT,
+          type TEXT NOT NULL DEFAULT 'university',
+          "order" INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS team (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          role TEXT NOT NULL,
+          bio TEXT,
+          image_url TEXT,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS stats (
+          id SERIAL PRIMARY KEY,
+          years_experience INTEGER NOT NULL DEFAULT 15,
+          programs INTEGER NOT NULL DEFAULT 50,
+          beneficiaries INTEGER NOT NULL DEFAULT 10000,
+          experts INTEGER NOT NULL DEFAULT 200,
+          universities INTEGER NOT NULL DEFAULT 30,
+          partners INTEGER NOT NULL DEFAULT 50,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS homepage_slides (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL,
+          subtitle TEXT,
+          url TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'image',
+          active BOOLEAN NOT NULL DEFAULT true,
+          "order" INTEGER NOT NULL DEFAULT 0,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
@@ -52,7 +134,6 @@ import express, { type Express } from "express";
         );
       `);
 
-      // Add missing columns to existing registrations table (safe migrations)
       const missingCols = [
         { col: 'gpa', type: 'TEXT' },
         { col: 'department', type: 'TEXT' },
@@ -67,17 +148,45 @@ import express, { type Express } from "express";
         try {
           await pool.query(`ALTER TABLE registrations ADD COLUMN IF NOT EXISTS "${col}" ${type}`);
         } catch {
-          // Column already exists or other non-critical error, continue
         }
       }
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS phone1 TEXT NOT NULL DEFAULT '+967 1 234 567'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS phone2 TEXT NOT NULL DEFAULT '+967 777 123 456'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS email1 TEXT NOT NULL DEFAULT 'info@almossah.org'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS email2 TEXT NOT NULL DEFAULT 'support@almossah.org'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT 'الجمهورية اليمنية - أمانة العاصمة - شارع الزبيري'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS address_detail TEXT NOT NULL DEFAULT 'تقاطع شارع بغداد، مبنى المركز التجاري'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS work_hours TEXT NOT NULL DEFAULT 'السبت - الخميس: 8:00 صباحاً - 4:00 مساءً'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS work_hours_off TEXT NOT NULL DEFAULT 'الجمعة: مغلق'`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS facebook_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS twitter_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS instagram_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS youtube_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS linkedin_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS whatsapp_number TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS map_embed_url TEXT NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+      await pool.query(`ALTER TABLE news ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT true`);
+      await pool.query(`ALTER TABLE news ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+      await pool.query(`ALTER TABLE partners ADD COLUMN IF NOT EXISTS website TEXT`);
+      await pool.query(`ALTER TABLE partners ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'university'`);
+      await pool.query(`ALTER TABLE partners ADD COLUMN IF NOT EXISTS "order" INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE partners ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+      await pool.query(`ALTER TABLE team ADD COLUMN IF NOT EXISTS bio TEXT`);
+      await pool.query(`ALTER TABLE team ADD COLUMN IF NOT EXISTS image_url TEXT`);
+      await pool.query(`ALTER TABLE team ADD COLUMN IF NOT EXISTS "order" INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE team ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`);
+      await pool.query(`ALTER TABLE stats ADD COLUMN IF NOT EXISTS programs INTEGER NOT NULL DEFAULT 50`);
+      await pool.query(`ALTER TABLE stats ADD COLUMN IF NOT EXISTS experts INTEGER NOT NULL DEFAULT 200`);
 
       logger.info("Database tables ensured successfully");
     } catch (err) {
       logger.error({ err }, "Failed to ensure tables");
+      throw err;
     }
   }
 
-  ensureTables();
+  const tablesReady = ensureTables();
 
   const app: Express = express();
 
@@ -108,6 +217,15 @@ import express, { type Express } from "express";
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  app.use(async (_req, res, next) => {
+    try {
+      await tablesReady;
+      next();
+    } catch {
+      res.status(500).json({ error: "Database initialization failed" });
+    }
+  });
 
   app.use(
     session({
