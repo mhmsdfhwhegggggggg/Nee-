@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
   import { db, registrationsTable } from "@workspace/db";
-  import { sql } from "drizzle-orm";
+  import { desc } from "drizzle-orm";
   import { pool } from "@workspace/db";
 
   const router: IRouter = Router();
@@ -23,7 +23,21 @@ import { Router, type IRouter } from "express";
       const result = await pool.query("SELECT count(*) as total FROM registrations");
       res.json({ status: "ok", total: result.rows[0]?.total });
     } catch (err: any) {
-      res.status(500).json({ status: "error", error: err.message, stack: err.stack?.slice(0, 500) });
+      res.status(500).json({ status: "error", error: err.message });
+    }
+  });
+
+  router.get("/healthz/drizzle", async (_req, res): Promise<void> => {
+    try {
+      const items = await db.select().from(registrationsTable).limit(1);
+      res.json({ status: "ok", items, count: items.length });
+    } catch (err: any) {
+      res.status(500).json({ 
+        status: "error", 
+        error: err.message,
+        stack: err.stack?.slice(0, 1000),
+        cause: err.cause?.message
+      });
     }
   });
 
