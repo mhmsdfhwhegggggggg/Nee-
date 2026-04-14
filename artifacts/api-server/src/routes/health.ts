@@ -1,11 +1,31 @@
 import { Router, type IRouter } from "express";
-import { HealthCheckResponse } from "@workspace/api-zod";
+  import { db, registrationsTable } from "@workspace/db";
+  import { sql } from "drizzle-orm";
+  import { pool } from "@workspace/db";
 
-const router: IRouter = Router();
+  const router: IRouter = Router();
 
-router.get("/healthz", (_req, res) => {
-  const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
-});
+  router.get("/healthz", async (_req, res): Promise<void> => {
+    res.json({ status: "ok" });
+  });
 
-export default router;
+  router.get("/healthz/db", async (_req, res): Promise<void> => {
+    try {
+      const result = await pool.query("SELECT 1 as check");
+      res.json({ status: "ok", dbConnected: true, result: result.rows[0] });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", dbConnected: false, error: err.message });
+    }
+  });
+
+  router.get("/healthz/registrations", async (_req, res): Promise<void> => {
+    try {
+      const result = await pool.query("SELECT count(*) as total FROM registrations");
+      res.json({ status: "ok", total: result.rows[0]?.total });
+    } catch (err: any) {
+      res.status(500).json({ status: "error", error: err.message, stack: err.stack?.slice(0, 500) });
+    }
+  });
+
+  export default router;
+  
