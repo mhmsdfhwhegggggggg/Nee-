@@ -22,6 +22,7 @@ import Stats from "./admin/Stats";
 import Slides from "./admin/Slides";
 import ContactInfoAdmin from "./admin/ContactInfo";
 import Settings from "./admin/Settings";
+import RegisterFormConfig from "./admin/RegisterFormConfig";
 
 export default function AppRoutes() {
   return (
@@ -29,6 +30,7 @@ export default function AppRoutes() {
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={Dashboard} />
       <Route path="/admin/registrations" component={Registrations} />
+      <Route path="/admin/register-form-config" component={RegisterFormConfig} />
       <Route path="/admin/news" component={News} />
       <Route path="/admin/partners" component={AdminPartners} />
       <Route path="/admin/team" component={Team} />

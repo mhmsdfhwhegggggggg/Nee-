@@ -8,6 +8,7 @@ import statsRouter from "./stats";
 import slidesRouter from "./slides";
 import adminRouter from "./admin";
 import contactInfoRouter from "./contact-info";
+import registrationFormConfigRouter from "./registration-form-config";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(statsRouter);
 router.use(slidesRouter);
 router.use(adminRouter);
 router.use(contactInfoRouter);
+router.use(registrationFormConfigRouter);
 
 export default router;
