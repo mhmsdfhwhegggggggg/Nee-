@@ -1,6 +1,5 @@
 import { Router, type IRouter } from "express";
   import { db, registrationsTable } from "@workspace/db";
-  import { desc } from "drizzle-orm";
   import { pool } from "@workspace/db";
 
   const router: IRouter = Router();
@@ -12,16 +11,36 @@ import { Router, type IRouter } from "express";
   router.get("/healthz/db", async (_req, res): Promise<void> => {
     try {
       const result = await pool.query("SELECT 1 as check");
-      res.json({ status: "ok", dbConnected: true, result: result.rows[0] });
+      res.json({ status: "ok", dbConnected: true });
     } catch (err: any) {
-      res.status(500).json({ status: "error", dbConnected: false, error: err.message });
+      res.status(500).json({ status: "error", error: err.message });
     }
   });
 
-  router.get("/healthz/registrations", async (_req, res): Promise<void> => {
+  // Run database migrations endpoint (for initial setup)
+  router.post("/healthz/migrate", async (_req, res): Promise<void> => {
     try {
-      const result = await pool.query("SELECT count(*) as total FROM registrations");
-      res.json({ status: "ok", total: result.rows[0]?.total });
+      const migrations = [
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS gpa TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS department TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS university_choice_1 TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS university_choice_2 TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS university_choice_3 TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS certificate_image_url TEXT`,
+        `ALTER TABLE registrations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+      ];
+      
+      const results = [];
+      for (const sql of migrations) {
+        try {
+          await pool.query(sql);
+          results.push({ sql: sql.slice(0, 60), status: 'ok' });
+        } catch (err: any) {
+          results.push({ sql: sql.slice(0, 60), status: 'error', error: err.message });
+        }
+      }
+      
+      res.json({ status: "migrations complete", results });
     } catch (err: any) {
       res.status(500).json({ status: "error", error: err.message });
     }
@@ -35,7 +54,6 @@ import { Router, type IRouter } from "express";
       res.status(500).json({ 
         status: "error", 
         error: err.message,
-        stack: err.stack?.slice(0, 1000),
         cause: err.cause?.message
       });
     }
