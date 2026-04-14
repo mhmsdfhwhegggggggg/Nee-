@@ -1,7 +1,8 @@
 {
-  "buildCommand": "pnpm install --no-frozen-lockfile && PORT=3000 BASE_PATH=/ pnpm --filter @workspace/almossah run build",
+  "buildCommand": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/almossah run build",
   "outputDirectory": "artifacts/almossah/dist/public",
   "framework": null,
+  "installCommand": "pnpm install --frozen-lockfile",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30
@@ -15,25 +16,6 @@
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/api/:path*",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        }
-      ]
     }
   ]
 }
