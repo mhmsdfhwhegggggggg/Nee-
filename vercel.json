@@ -1,10 +1,10 @@
 {
-  "buildCommand": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/almossah run build",
+  "buildCommand": "PORT=3000 BASE_PATH=/ pnpm --filter @workspace/almossah run build && pnpm --filter @workspace/api-server run build",
   "outputDirectory": "artifacts/almossah/dist/public",
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
