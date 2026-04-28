@@ -92,6 +92,11 @@ export default function Registrations() {
                     <td className="px-4 py-4">
                       <div className="text-slate-900 font-medium">{reg.department || "-"}</div>
                       <div className="text-slate-500 text-xs mt-1">{reg.gpa ? `المعدل: ${reg.gpa}` : "-"}</div>
+                      {((reg as any).universityChoice1 || (reg as any).specializationChoice1) && (
+                        <div className="text-emerald-700 text-xs mt-1.5 font-medium truncate max-w-[200px]" title={`${(reg as any).universityChoice1 || ""} - ${(reg as any).specializationChoice1 || ""}`}>
+                          🎓 {(reg as any).specializationChoice1 || (reg as any).universityChoice1}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-slate-600">
                       {new Date(reg.createdAt).toLocaleDateString('ar-EG')}
@@ -191,20 +196,35 @@ export default function Registrations() {
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="font-bold text-slate-800 mb-3">اختيارات الجامعات</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">الخيار الأول</p>
-                    <p className="font-medium text-slate-900">{selectedReg.universityChoice1 || "غير محدد"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">الخيار الثاني</p>
-                    <p className="font-medium text-slate-900">{selectedReg.universityChoice2 || "غير محدد"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-500">الخيار الثالث</p>
-                    <p className="font-medium text-slate-900">{selectedReg.universityChoice3 || "غير محدد"}</p>
-                  </div>
+                <h3 className="font-bold text-slate-800 mb-3">اختيارات الجامعات والتخصصات</h3>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => {
+                    const uni = (selectedReg as any)[`universityChoice${n}`];
+                    const spec = (selectedReg as any)[`specializationChoice${n}`];
+                    if (!uni && !spec) {
+                      return (
+                        <div key={n} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                          <p className="text-xs font-bold text-slate-400 mb-1">الخيار {n === 1 ? "الأول" : n === 2 ? "الثاني" : "الثالث"}</p>
+                          <p className="text-sm text-slate-400">غير محدد</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={n} className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                        <p className="text-xs font-bold text-primary mb-2">الخيار {n === 1 ? "الأول" : n === 2 ? "الثاني" : "الثالث"}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-slate-500 mb-0.5">الجامعة</p>
+                            <p className="font-bold text-slate-900 text-sm">{uni || "غير محدد"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 mb-0.5">التخصص</p>
+                            <p className="font-bold text-emerald-700 text-sm">{spec || "غير محدد"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
