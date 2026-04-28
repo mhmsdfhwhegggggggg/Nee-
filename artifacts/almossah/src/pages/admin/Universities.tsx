@@ -157,8 +157,6 @@ export default function Universities() {
         category: "",
         minGpa: 50,
         track: "both",
-        durationYears: 4,
-        annualFees: "",
         order: uni ? uni.specializations.length + 1 : 1,
         enabled: true,
       },
@@ -364,31 +362,12 @@ export default function Universities() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">مدة الدراسة (سنوات)</label>
-              <input
-                type="number"
-                value={editingSpec.spec.durationYears ?? ""}
-                onChange={(e) => setEditingSpec({ ...editingSpec, spec: { ...editingSpec.spec, durationYears: e.target.value ? parseInt(e.target.value) : null } })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">التصنيف (اختياري)</label>
               <input
                 type="text"
                 value={editingSpec.spec.category || ""}
                 onChange={(e) => setEditingSpec({ ...editingSpec, spec: { ...editingSpec.spec, category: e.target.value } })}
                 placeholder="مثال: العلوم الطبية"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">الرسوم السنوية (اختياري)</label>
-              <input
-                type="text"
-                value={editingSpec.spec.annualFees || ""}
-                onChange={(e) => setEditingSpec({ ...editingSpec, spec: { ...editingSpec.spec, annualFees: e.target.value } })}
-                placeholder="مثال: $2,143"
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -491,10 +470,8 @@ export default function Universities() {
                           <tr>
                             <th className="px-3 py-2 font-medium">التخصص</th>
                             <th className="px-3 py-2 font-medium">التصنيف</th>
-                            <th className="px-3 py-2 font-medium">المعدل</th>
+                            <th className="px-3 py-2 font-medium">المعدل المطلوب</th>
                             <th className="px-3 py-2 font-medium">القسم</th>
-                            <th className="px-3 py-2 font-medium">المدة</th>
-                            <th className="px-3 py-2 font-medium">الرسوم</th>
                             <th className="px-3 py-2 font-medium">الحالة</th>
                             <th className="px-3 py-2 font-medium">إجراءات</th>
                           </tr>
@@ -510,8 +487,6 @@ export default function Universities() {
                               <td className="px-3 py-2 text-slate-600">
                                 {TRACK_OPTIONS.find((t) => t.value === s.track)?.label || s.track}
                               </td>
-                              <td className="px-3 py-2 text-slate-600">{s.durationYears ? `${s.durationYears} سنوات` : "-"}</td>
-                              <td className="px-3 py-2 text-slate-600">{s.annualFees || "-"}</td>
                               <td className="px-3 py-2">
                                 <button
                                   onClick={() => toggleSpecEnabled(s)}

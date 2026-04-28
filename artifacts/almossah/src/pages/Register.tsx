@@ -209,10 +209,10 @@ export default function Register() {
         return { eligible: false, reason: "أدخل المعدل أولاً لمعرفة التخصصات المتاحة" };
       }
       if (watchedDepartment && !trackMatches(s.track, watchedDepartment)) {
-        return { eligible: false, reason: `هذا التخصص متاح للقسم: ${trackLabel(s.track)}` };
+        return { eligible: false, reason: "للأسف هذا التخصص غير متاح لقسمك" };
       }
       if (studentGpa < s.minGpa) {
-        return { eligible: false, reason: `للأسف المعدل غير مقبول في هذا التخصص. الحد الأدنى المطلوب ${s.minGpa}%` };
+        return { eligible: false, reason: "للأسف المعدل غير مقبول في هذا التخصص" };
       }
       return { eligible: true, reason: "" };
     };
@@ -330,24 +330,13 @@ export default function Register() {
                           <div className="text-[11px] text-gray-400 mt-0.5">{s.category}</div>
                         )}
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                            eligible
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-red-100 text-red-700"
-                          }`}>
-                            معدل {s.minGpa}%
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                            {trackLabel(s.track)}
-                          </span>
-                          {s.durationYears && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                              {s.durationYears} سنوات
+                          {!eligible ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700">
+                              غير متاح لك
                             </span>
-                          )}
-                          {s.annualFees && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                              {s.annualFees}
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-100 text-emerald-700">
+                              متاح
                             </span>
                           )}
                         </div>
