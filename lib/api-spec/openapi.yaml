@@ -616,6 +616,12 @@ components:
           type: ["string", "null"]
         universityChoice3:
           type: ["string", "null"]
+        specializationChoice1:
+          type: ["string", "null"]
+        specializationChoice2:
+          type: ["string", "null"]
+        specializationChoice3:
+          type: ["string", "null"]
         status:
           type: string
           enum: [pending, approved, rejected]
@@ -657,6 +663,12 @@ components:
         universityChoice2:
           type: string
         universityChoice3:
+          type: string
+        specializationChoice1:
+          type: string
+        specializationChoice2:
+          type: string
+        specializationChoice3:
           type: string
       required:
         - fullName

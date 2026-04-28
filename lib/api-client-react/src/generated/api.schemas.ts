@@ -39,6 +39,12 @@ export interface Registration {
   universityChoice2?: string | null;
   /** @nullable */
   universityChoice3?: string | null;
+  /** @nullable */
+  specializationChoice1?: string | null;
+  /** @nullable */
+  specializationChoice2?: string | null;
+  /** @nullable */
+  specializationChoice3?: string | null;
   status: RegistrationStatus;
   createdAt: string;
 }
@@ -56,6 +62,9 @@ export interface CreateRegistrationBody {
   universityChoice1?: string;
   universityChoice2?: string;
   universityChoice3?: string;
+  specializationChoice1?: string;
+  specializationChoice2?: string;
+  specializationChoice3?: string;
 }
 
 export type UpdateRegistrationBodyStatus =

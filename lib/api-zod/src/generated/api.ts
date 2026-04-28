@@ -42,6 +42,9 @@ export const ListRegistrationsResponse = zod.object({
       universityChoice1: zod.string().nullish(),
       universityChoice2: zod.string().nullish(),
       universityChoice3: zod.string().nullish(),
+      specializationChoice1: zod.string().nullish(),
+      specializationChoice2: zod.string().nullish(),
+      specializationChoice3: zod.string().nullish(),
       status: zod.enum(["pending", "approved", "rejected"]),
       createdAt: zod.string(),
     }),
@@ -67,6 +70,9 @@ export const CreateRegistrationBody = zod.object({
   universityChoice1: zod.string().optional(),
   universityChoice2: zod.string().optional(),
   universityChoice3: zod.string().optional(),
+  specializationChoice1: zod.string().optional(),
+  specializationChoice2: zod.string().optional(),
+  specializationChoice3: zod.string().optional(),
 });
 
 /**
@@ -90,6 +96,9 @@ export const GetRegistrationResponse = zod.object({
   universityChoice1: zod.string().nullish(),
   universityChoice2: zod.string().nullish(),
   universityChoice3: zod.string().nullish(),
+  specializationChoice1: zod.string().nullish(),
+  specializationChoice2: zod.string().nullish(),
+  specializationChoice3: zod.string().nullish(),
   status: zod.enum(["pending", "approved", "rejected"]),
   createdAt: zod.string(),
 });
@@ -119,6 +128,9 @@ export const UpdateRegistrationResponse = zod.object({
   universityChoice1: zod.string().nullish(),
   universityChoice2: zod.string().nullish(),
   universityChoice3: zod.string().nullish(),
+  specializationChoice1: zod.string().nullish(),
+  specializationChoice2: zod.string().nullish(),
+  specializationChoice3: zod.string().nullish(),
   status: zod.enum(["pending", "approved", "rejected"]),
   createdAt: zod.string(),
 });
@@ -454,6 +466,9 @@ export const GetAdminDashboardResponse = zod.object({
       universityChoice1: zod.string().nullish(),
       universityChoice2: zod.string().nullish(),
       universityChoice3: zod.string().nullish(),
+      specializationChoice1: zod.string().nullish(),
+      specializationChoice2: zod.string().nullish(),
+      specializationChoice3: zod.string().nullish(),
       status: zod.enum(["pending", "approved", "rejected"]),
       createdAt: zod.string(),
     }),

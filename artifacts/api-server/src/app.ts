@@ -107,6 +107,35 @@ import express, { type Express } from "express";
         );
       `);
       await pool.query(`
+        CREATE TABLE IF NOT EXISTS universities (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          logo_url TEXT,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          enabled BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS university_specializations (
+          id SERIAL PRIMARY KEY,
+          university_id INTEGER NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          category TEXT,
+          min_gpa REAL NOT NULL DEFAULT 0,
+          track TEXT NOT NULL DEFAULT 'both',
+          duration_years INTEGER,
+          annual_fees TEXT,
+          notes TEXT,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          enabled BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS admin_credentials (
           username TEXT PRIMARY KEY,
           password_hash TEXT NOT NULL,
@@ -140,6 +169,9 @@ import express, { type Express } from "express";
         { col: 'university_choice_1', type: 'TEXT' },
         { col: 'university_choice_2', type: 'TEXT' },
         { col: 'university_choice_3', type: 'TEXT' },
+        { col: 'specialization_choice_1', type: 'TEXT' },
+        { col: 'specialization_choice_2', type: 'TEXT' },
+        { col: 'specialization_choice_3', type: 'TEXT' },
         { col: 'certificate_image_url', type: 'TEXT' },
         { col: 'updated_at', type: 'TIMESTAMPTZ NOT NULL DEFAULT NOW()' },
       ];
