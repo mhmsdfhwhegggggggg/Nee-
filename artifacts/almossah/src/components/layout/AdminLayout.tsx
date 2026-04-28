@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useGetAdminMe } from "@workspace/api-client-react";
-import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
@@ -78,7 +78,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { href: "/admin/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard size={20} /> },
     { href: "/admin/registrations", label: "طلبات التسجيل", icon: <Users size={20} /> },
     { href: "/admin/register-form-config", label: "إدارة نموذج التسجيل", icon: <ClipboardEdit size={20} /> },
-    { href: "/admin/universities", label: "الجامعات والتخصصات", icon: <GraduationCap size={20} /> },
     { href: "/admin/news", label: "الأخبار والفعاليات", icon: <FileText size={20} /> },
     { href: "/admin/slides", label: "شرائح الصفحة الرئيسية", icon: <ImageIcon size={20} /> },
     { href: "/admin/partners", label: "شركاء النجاح", icon: <Handshake size={20} /> },
