@@ -43,11 +43,7 @@ export function Footer() {
             <h3 className="text-white font-bold text-lg mb-6 relative inline-block after:content-[''] after:absolute after:-bottom-2 after:right-0 after:w-1/2 after:h-1 after:bg-primary">مجالات العمل</h3>
             <ul className="flex flex-col gap-3">
               <li><Link href="/services#education"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الخدمات التعليمية</div></Link></li>
-              <li><Link href="/services#medical"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الخدمات الطبية</div></Link></li>
-              <li><Link href="/services#relief"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الإغاثة والرعاية</div></Link></li>
-              <li><Link href="/services#empowerment"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التمكين الاقتصادي</div></Link></li>
               <li><Link href="/services#training"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">التدريب والتأهيل</div></Link></li>
-              <li><Link href="/services#protection"><div className="hover:text-primary transition-colors cursor-pointer flex items-center gap-2 before:content-['›'] before:text-primary">الحماية المجتمعية</div></Link></li>
             </ul>
           </div>
 
