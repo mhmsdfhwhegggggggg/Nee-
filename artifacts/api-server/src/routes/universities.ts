@@ -457,7 +457,32 @@ router.post("/admin/universities/seed-defaults", async (req, res): Promise<void>
       { category: "كلية المال والاقتصاد", name: "إدارة أعمال عربي", minGpa: 50, track: "both" },
     ],
   };
-  const modernSciences = { name: "جامعة العلوم الحديثة", description: "Modern Sciences University", order: 10, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const modernSciences = {
+    name: "جامعة العلوم الحديثة",
+    description: "University of Modern Sciences",
+    order: 10,
+    specs: [
+      { category: "كلية العلوم الطبية", name: "الصيدلة", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "الطب المخبري", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التغذية العلاجية والحميات", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "هندسة معمارية", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "هندسة التصميم الداخلي (هـ. ديكور)", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "هندسة الاتصالات والإلكترونيات", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "أمن سيبراني وشبكات", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "تقنية المعلومات", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "نظم المعلومات الحاسوبية", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "جرافيكس وملتيميديا", minGpa: 60, track: "scientific" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال دولية باللغة الإنجليزية", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "محاسبة", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "نظم معلومات إدارية", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "علوم مالية ومصرفية", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "تسويق", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "علاقات عامة", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إذاعة وتلفزيون", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "اللغة الإنجليزية وآدابها", minGpa: 55, track: "both" },
+    ],
+  };
 
   const jeelJadeed = {
     name: "جامعة الجيل الجديد",
