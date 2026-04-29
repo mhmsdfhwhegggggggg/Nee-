@@ -196,83 +196,195 @@ router.delete("/admin/specializations/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.post("/admin/universities/seed-defaults", async (_req, res): Promise<void> => {
+router.post("/admin/universities/seed-defaults", async (req, res): Promise<void> => {
+  const force = String(req.query.force || "") === "true";
   const existing = await db.select().from(universitiesTable);
-  if (existing.length > 0) {
+  if (existing.length > 0 && !force) {
     res.json({ message: "Universities already exist", count: existing.length });
     return;
   }
-
-  const azal = {
-    name: "جامعة أزال للتنمية البشرية",
-    description: "Azal University for Human Development",
-    order: 1,
-    specs: [
-      { category: "العلوم الطبية", name: "الصيدلة", minGpa: 70, track: "scientific", durationYears: 5, annualFees: "$2,143" },
-      { category: "العلوم الطبية", name: "المختبرات", minGpa: 65, track: "both", durationYears: 4, annualFees: "$1,786" },
-      { category: "العلوم الطبية", name: "العلاج الطبيعي", minGpa: 65, track: "both", durationYears: 4, annualFees: "$1,571" },
-      { category: "العلوم الطبية", name: "التمريض التخصصي", minGpa: 65, track: "both", durationYears: 4, annualFees: "$1,429" },
-      { category: "العلوم الطبية", name: "تكنولوجيا التخدير", minGpa: 65, track: "both", durationYears: 4, annualFees: "$3,143" },
-      { category: "العلوم الطبية", name: "تكنولوجيا الأشعة", minGpa: 63, track: "both", durationYears: 4, annualFees: "$2,714" },
-      { category: "العلوم الطبية", name: "القبالة", minGpa: 63, track: "scientific", durationYears: 4, annualFees: "$1,714" },
-      { category: "العلوم الطبية", name: "التغذية العلاجية والحميات", minGpa: 65, track: "both", durationYears: 4, annualFees: "$1,571" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "تقنية المعلومات IT", minGpa: 55, track: "scientific", durationYears: 4, annualFees: "$1,714" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "الهندسة المدنية", minGpa: 65, track: "scientific", durationYears: 4, annualFees: "$1,571" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "الهندسة المعمارية", minGpa: 65, track: "scientific", durationYears: 5, annualFees: "$1,714" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "الجرافيكس والمالتيمديا", minGpa: 60, track: "scientific", durationYears: 4, annualFees: "$1,886" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "الأمن السيبراني", minGpa: 60, track: "scientific", durationYears: 4, annualFees: "$1,714" },
-      { category: "الهندسة وتكنولوجيا المعلومات", name: "هندسة شبكات والاتصالات", minGpa: 65, track: "scientific", durationYears: 4, annualFees: "$1,429" },
-      { category: "العلوم الإدارية والإنسانية", name: "إدارة أعمال", minGpa: 50, track: "both", durationYears: 4, annualFees: "$800" },
-      { category: "العلوم الإدارية والإنسانية", name: "المحاسبة", minGpa: 50, track: "both", durationYears: 4, annualFees: "$957" },
-      { category: "العلوم الإدارية والإنسانية", name: "اللغة الإنجليزية والترجمة", minGpa: 50, track: "both", durationYears: 4, annualFees: "$714" },
-      { category: "العلوم الإدارية والإنسانية", name: "العلوم المالية والمصرفية", minGpa: 50, track: "both", durationYears: 4, annualFees: "$800" },
-      { category: "العلوم الإدارية والإنسانية", name: "نظم المعلومات الإدارية", minGpa: 50, track: "both", durationYears: 4, annualFees: "$800" },
-      { category: "العلوم الإدارية والإنسانية", name: "الإدارة الصحية", minGpa: 50, track: "both", durationYears: 4, annualFees: "$957" },
-      { category: "العلوم الإدارية والإنسانية", name: "إدارة الأعمال الدولية", minGpa: 50, track: "both", durationYears: 4, annualFees: "$957" },
-      { category: "تربية أزال", name: "علوم حاسوب للمعلم", minGpa: 48, track: "both", durationYears: 4, annualFees: "$1,000" },
-      { category: "تربية أزال", name: "تربية ذوي الاحتياجات الخاصة", minGpa: 50, track: "both", durationYears: 4, annualFees: "$1,000" },
-      { category: "تربية أزال", name: "الإرشاد النفسي والتربوي", minGpa: 55, track: "both", durationYears: 4, annualFees: "$1,000" },
-    ],
-  };
+  if (existing.length > 0 && force) {
+    await db.delete(universitySpecializationsTable);
+    await db.delete(universitiesTable);
+  }
 
   const yemenia = {
     name: "الجامعة اليمنية",
     description: "AlYemenia University",
-    order: 2,
+    order: 1,
     specs: [
-      { name: "الطب البشري", minGpa: 78, track: "scientific", annualFees: "$7,000" },
-      { name: "طب الأسنان", minGpa: 75, track: "scientific", annualFees: "$4,900" },
-      { name: "الصيدلة", minGpa: 70, track: "scientific", annualFees: "$2,200" },
-      { name: "الطب المخبري", minGpa: 65, track: "scientific", annualFees: "$1,800" },
-      { name: "التغذية العلاجية", minGpa: 65, track: "scientific", annualFees: "$2,100" },
-      { name: "التمريض العالي", minGpa: 65, track: "scientific", annualFees: "$1,750" },
-      { name: "القبالة", minGpa: 65, track: "scientific", annualFees: "$1,750" },
-      { name: "تكنولوجيا المعلومات IT", minGpa: 55, track: "scientific", annualFees: "$1,700" },
-      { name: "الهندسة المعمارية", minGpa: 65, track: "scientific", annualFees: "$1,900" },
-      { name: "التصميم الجرافيكي والملتيميديا", minGpa: 60, track: "both", annualFees: "$1,700" },
-      { name: "الأمن السيبراني والشبكات", minGpa: 55, track: "scientific", annualFees: "$1,900" },
-      { name: "الهندسة الطبية الحيوية", minGpa: 60, track: "scientific", annualFees: "$2,300" },
-      { name: "التصميم الداخلي", minGpa: 63, track: "both", annualFees: "$1,380" },
-      { name: "المحاسبة", minGpa: 50, track: "both", annualFees: "$1,200" },
-      { name: "إدارة أعمال", minGpa: 50, track: "both", annualFees: "$1,200" },
-      { name: "العلوم المالية والمصرفية", minGpa: 50, track: "both", annualFees: "$1,200" },
-      { name: "التسويق", minGpa: 50, track: "both", annualFees: "$1,200" },
-      { name: "نظم المعلومات الإدارية", minGpa: 55, track: "both", annualFees: "$1,350" },
-      { name: "الشريعة والقانون", minGpa: 50, track: "both", annualFees: "$1,200" },
-      { name: "الترجمة", minGpa: 50, track: "both", annualFees: "$1,150" },
-      { name: "اللغة الإنجليزية وآدابها", minGpa: 50, track: "both", annualFees: "$1,150" },
-      { name: "إذاعة وتلفزيون", minGpa: 55, track: "both", annualFees: "$900" },
-      { name: "العلاقات العامة والإعلان", minGpa: 55, track: "both", annualFees: "$900" },
-      { name: "الصحافة الإلكترونية", minGpa: 50, track: "both", annualFees: "$900" },
-      { name: "الدراسات الإسلامية", minGpa: 50, track: "both", annualFees: "$600" },
-      { name: "القرآن الكريم وعلومه", minGpa: 50, track: "both", annualFees: "$600" },
-      { name: "اللغة العربية", minGpa: 50, track: "both", annualFees: "$600" },
-      { name: "علم نفس", minGpa: 50, track: "both", annualFees: "$800" },
-      { name: "رياض أطفال", minGpa: 50, track: "both", annualFees: "$800" },
+      { category: "كلية الطب", name: "الطب البشري", minGpa: 78, track: "scientific" },
+      { category: "كلية طب الأسنان", name: "طب الأسنان", minGpa: 75, track: "scientific" },
+      { category: "كلية الصيدلة", name: "الصيدلة", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "الطب المخبري", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التغذية العلاجية", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التمريض العالي", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "القبالة", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "تكنولوجيا المعلومات IT", minGpa: 55, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الهندسة المعمارية", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "التصميم الجرافيكي والملتيميديا", minGpa: 60, track: "both" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الأمن السيبراني والشبكات", minGpa: 55, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الهندسة الطبية الحيوية", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "التصميم الداخلي", minGpa: 63, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "المحاسبة", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "إدارة أعمال", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "العلوم المالية والمصرفية", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "التسويق", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "نظم المعلومات الإدارية", minGpa: 55, track: "both" },
+      { category: "كلية الحقوق", name: "الشريعة والقانون", minGpa: 50, track: "both" },
+      { category: "كلية الآداب واللغات", name: "الترجمة", minGpa: 50, track: "both" },
+      { category: "كلية الآداب واللغات", name: "اللغة الإنجليزية وآدابها", minGpa: 50, track: "both" },
+      { category: "كلية الإعلام", name: "إذاعة وتلفزيون", minGpa: 55, track: "both" },
+      { category: "كلية الإعلام", name: "العلاقات العامة والإعلان", minGpa: 55, track: "both" },
+      { category: "كلية الإعلام", name: "الصحافة الإلكترونية", minGpa: 50, track: "both" },
+      { category: "كلية الشريعة", name: "الدراسات الإسلامية", minGpa: 50, track: "both" },
+      { category: "كلية الشريعة", name: "القرآن الكريم وعلومه", minGpa: 50, track: "both" },
+      { category: "كلية التربية", name: "اللغة العربية", minGpa: 50, track: "both" },
+      { category: "كلية التربية", name: "علم نفس", minGpa: 50, track: "both" },
+      { category: "كلية التربية", name: "رياض أطفال", minGpa: 50, track: "both" },
     ],
   };
 
-  for (const uni of [azal, yemenia]) {
+  const hadara = {
+    name: "جامعة الحضارة",
+    description: "Civilization University",
+    order: 2,
+    specs: [
+      { category: "كلية الطب البشري", name: "طب وجراحة عامة", minGpa: 78, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "طب الأسنان", minGpa: 75, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "صيدلة عامة", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "دكتور صيدلي", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التخدير", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "علوم مخبرية", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة", name: "تقنية معلومات", minGpa: 55, track: "scientific" },
+      { category: "كلية الهندسة", name: "علوم حاسوب", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة", name: "هندسة مدنية", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة", name: "هندسة نظم وإدارة", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة", name: "هندسة الديكور", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة", name: "هندسة معمارية", minGpa: 65, track: "scientific" },
+      { category: "كلية التجارة", name: "المحاسبة", minGpa: 50, track: "both" },
+      { category: "كلية التجارة", name: "إدارة الأعمال", minGpa: 50, track: "both" },
+      { category: "كلية التجارة", name: "نظم معلومات إدارية", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "الجيوفيزياء", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "شريعة وقانون", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "علوم سياسية", minGpa: 55, track: "both" },
+    ],
+  };
+
+  const azal = {
+    name: "جامعة أزال للتنمية البشرية",
+    description: "Azal University for Human Development",
+    order: 3,
+    specs: [
+      { category: "العلوم الطبية", name: "الصيدلة", minGpa: 70, track: "scientific" },
+      { category: "العلوم الطبية", name: "المختبرات", minGpa: 65, track: "both" },
+      { category: "العلوم الطبية", name: "العلاج الطبيعي", minGpa: 65, track: "both" },
+      { category: "العلوم الطبية", name: "التمريض التخصصي", minGpa: 65, track: "both" },
+      { category: "العلوم الطبية", name: "تكنولوجيا التخدير", minGpa: 65, track: "both" },
+      { category: "العلوم الطبية", name: "تكنولوجيا الأشعة", minGpa: 63, track: "both" },
+      { category: "العلوم الطبية", name: "القبالة", minGpa: 63, track: "scientific" },
+      { category: "العلوم الطبية", name: "التغذية العلاجية والحميات", minGpa: 65, track: "both" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "تقنية المعلومات IT", minGpa: 55, track: "scientific" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "الهندسة المدنية", minGpa: 65, track: "scientific" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "الهندسة المعمارية", minGpa: 65, track: "scientific" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "الجرافيكس والمالتيمديا", minGpa: 60, track: "scientific" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "الأمن السيبراني", minGpa: 60, track: "scientific" },
+      { category: "الهندسة وتكنولوجيا المعلومات", name: "هندسة شبكات والاتصالات", minGpa: 65, track: "scientific" },
+      { category: "العلوم الإدارية والإنسانية", name: "إدارة أعمال", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "المحاسبة", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "اللغة الإنجليزية والترجمة", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "العلوم المالية والمصرفية", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "نظم المعلومات الإدارية", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "الإدارة الصحية", minGpa: 50, track: "both" },
+      { category: "العلوم الإدارية والإنسانية", name: "إدارة الأعمال الدولية", minGpa: 50, track: "both" },
+      { category: "تربية أزال", name: "علوم حاسوب للمعلم", minGpa: 48, track: "both" },
+      { category: "تربية أزال", name: "تربية ذوي الاحتياجات الخاصة", minGpa: 50, track: "both" },
+      { category: "تربية أزال", name: "الإرشاد النفسي والتربوي", minGpa: 55, track: "both" },
+    ],
+  };
+
+  const naser = {
+    name: "جامعة الناصر",
+    description: "Al-Naser University",
+    order: 4,
+    specs: [
+      { category: "كلية طب الأسنان", name: "طب وجراحة الفم والأسنان", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "صيدلة", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "مختبرات", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "تمريض", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "صحة مجتمع", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "تغذية علاجية", minGpa: 69, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "تقنية معلومات (إدارة النظم والشبكات)", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "تقنية معلومات (تكنولوجيا الويب والموبايل)", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "الأمن السيبراني والتحري الرقمي", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "الذكاء الاصطناعي", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "علوم البيانات", minGpa: 71, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "هندسة مدنية", minGpa: 71, track: "scientific" },
+      { category: "كلية الهندسة وعلوم الحاسوب", name: "هندسة معمارية", minGpa: 71, track: "scientific" },
+      { category: "كلية العلوم الإدارية والمالية", name: "نظم معلومات إدارية", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "إدارة مستشفيات", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "محاسبة", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "تسويق", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "إدارة أعمال", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والمالية", name: "علوم مالية ومصرفية", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "لغة عربية", minGpa: 53, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "لغة إنجليزية - ترجمة", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "شريعة وقانون", minGpa: 53, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "دراسات إسلامية", minGpa: 53, track: "both" },
+      { category: "كلية العلوم الإنسانية", name: "علاقات عامة وإعلان", minGpa: 55, track: "both" },
+    ],
+  };
+
+  const saeeda = {
+    name: "جامعة السعيدة",
+    description: "Al-Saeeda University",
+    order: 5,
+    specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }>,
+  };
+
+  const razi = {
+    name: "جامعة الرازي",
+    description: "Al-Razi University",
+    order: 6,
+    specs: [
+      { category: "كلية الطب والعلوم الصحية", name: "الطب والجراحة العامة", minGpa: 78, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "دكتور صيدلي", minGpa: 70, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "صيدلة", minGpa: 70, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "علاج طبيعي", minGpa: 65, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "تمريض", minGpa: 65, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "قبالة", minGpa: 65, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "تغذية علاجية", minGpa: 65, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "صحة المجتمع", minGpa: 65, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "رعاية تنفسية", minGpa: 63, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "علوم طبية حيوية", minGpa: 65, track: "scientific" },
+      { category: "كلية طب الأسنان", name: "طب وجراحة الفم والأسنان", minGpa: 75, track: "scientific" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "محاسبة", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "محاسبة إنجليزي", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "تمويل واستثمار", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "علوم مالية ومصرفية", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "تسويق", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الشريعة والقانون", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال دولية - عربي", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال دولية - إنجليزي", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الأعمال والتجارة الإلكترونية", minGpa: 55, track: "both" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "علوم حاسوب", minGpa: 60, track: "scientific" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "تقنية معلومات", minGpa: 55, track: "scientific" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "نظم معلومات إدارية", minGpa: 60, track: "both" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "ذكاء اصطناعي", minGpa: 60, track: "scientific" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "علم البيانات", minGpa: 60, track: "scientific" },
+      { category: "كلية الحاسوب وتقنية المعلومات", name: "الجرائم الإلكترونية والأمن المعلوماتي", minGpa: 60, track: "scientific" },
+    ],
+  };
+
+  const ibnNafees = { name: "جامعة ابن النفيس", description: "Ibn Al-Nafees University", order: 7, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const nukhba = { name: "جامعة النخبة", description: "Al-Nukhba University", order: 8, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const rashid = { name: "جامعة الرشيد", description: "Al-Rashid University", order: 9, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const modernSciences = { name: "جامعة العلوم الحديثة", description: "Modern Sciences University", order: 10, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+
+  const ALL = [yemenia, hadara, azal, naser, saeeda, razi, ibnNafees, nukhba, rashid, modernSciences];
+
+  for (const uni of ALL) {
     const [created] = await db
       .insert(universitiesTable)
       .values({ name: uni.name, description: uni.description, order: uni.order, enabled: true })
@@ -284,11 +396,11 @@ router.post("/admin/universities/seed-defaults", async (_req, res): Promise<void
       await db.insert(universitySpecializationsTable).values({
         universityId: created.id,
         name: s.name,
-        category: (s as { category?: string }).category || null,
+        category: s.category || null,
         minGpa: s.minGpa,
         track: s.track,
-        durationYears: (s as { durationYears?: number }).durationYears || null,
-        annualFees: s.annualFees || null,
+        durationYears: null,
+        annualFees: null,
         notes: null,
         order: i,
         enabled: true,

@@ -88,10 +88,12 @@ export default function RegisterFormConfig() {
     } catch {}
   };
 
-  const seedUniversities = async () => {
+  const seedUniversities = async (force = false) => {
+    if (force && !window.confirm("سيؤدي هذا إلى حذف جميع الجامعات والتخصصات الحالية واستبدالها بالقائمة الكاملة الافتراضية. هل تريد المتابعة؟")) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/universities/seed-defaults", { method: "POST", headers });
+      const url = force ? "/api/admin/universities/seed-defaults?force=true" : "/api/admin/universities/seed-defaults";
+      const res = await fetch(url, { method: "POST", headers });
       if (res.ok) await fetchUniversities();
     } catch {}
     setSaving(false);
@@ -604,15 +606,25 @@ export default function RegisterFormConfig() {
               <p className="text-xs text-slate-500">تظهر هذه القائمة للطالب في حقول "الجامعة - الخيار الأول/الثاني/الثالث". المعدل المطلوب لا يظهر للطالب لكن يستخدمه الموقع للتحقق.</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {universities.length === 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {universities.length === 0 ? (
               <button
-                onClick={seedUniversities}
+                onClick={() => seedUniversities(false)}
                 disabled={saving}
                 className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-60"
               >
                 <Settings2 size={16} />
                 تحميل الجامعات الافتراضية
+              </button>
+            ) : (
+              <button
+                onClick={() => seedUniversities(true)}
+                disabled={saving}
+                title="يحذف القائمة الحالية ويستبدلها بالقائمة الكاملة الافتراضية"
+                className="flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-60"
+              >
+                <Settings2 size={16} />
+                إعادة تحميل القائمة الافتراضية
               </button>
             )}
             <button
