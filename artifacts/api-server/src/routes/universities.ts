@@ -397,7 +397,23 @@ router.post("/admin/universities/seed-defaults", async (req, res): Promise<void>
     ],
   };
 
-  const ibnNafees = { name: "جامعة ابن النفيس", description: "Ibn Al-Nafees University", order: 7, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const ibnNafees = {
+    name: "جامعة ابن النفيس",
+    description: "Ibn Al-Nafees University",
+    order: 7,
+    specs: [
+      { category: "كلية العلوم الصحية", name: "طب وجراحة الفم والأسنان", minGpa: 75, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "الصيدلة العامة", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "تكنولوجيا التخدير", minGpa: 63, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "المختبرات الطبية", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "التمريض", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "الصيدلة السريرية", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "الرعاية التنفسية", minGpa: 63, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "البصريات وعلوم الرؤية", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "القبالة", minGpa: 63, track: "scientific" },
+      { category: "كلية العلوم الصحية", name: "العلاج الطبيعي والتأهيل", minGpa: 65, track: "scientific" },
+    ],
+  };
 
   const nukhba = {
     name: "جامعة النخبة",
