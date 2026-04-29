@@ -545,7 +545,7 @@ export default function Register() {
           className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
         >
           <div className="bg-primary p-8 text-center text-white">
-            <h1 className="text-3xl font-bold mb-2">سجل الآن</h1>
+            <h1 className="text-3xl font-bold mb-2">سجل الآن في المقاعد الجامعية المخفضة</h1>
             <p className="text-white/80">املأ النموذج أدناه للتقديم على برامج المؤسسة</p>
           </div>
 
