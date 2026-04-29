@@ -341,16 +341,14 @@ export default function RegisterFormConfig() {
             <p className="text-slate-500">تحكم في حقول صفحة "سجل الآن" - إضافة، تعديل، حذف، ترتيب</p>
           </div>
           <div className="flex gap-2">
-            {fields.length === 0 && (
-              <button
-                onClick={seedDefaults}
-                disabled={saving}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-60"
-              >
-                <Settings2 size={16} />
-                تحميل الحقول الافتراضية
-              </button>
-            )}
+            <button
+              onClick={seedDefaults}
+              disabled={saving}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors disabled:opacity-60"
+            >
+              <Settings2 size={16} />
+              {fields.length === 0 ? "تحميل الحقول الافتراضية" : "إضافة الحقول الناقصة"}
+            </button>
             <button
               onClick={startNew}
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors"

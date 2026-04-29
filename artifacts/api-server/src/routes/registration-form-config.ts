@@ -128,10 +128,7 @@ router.delete("/admin/registration-form-config/:id", async (req, res): Promise<v
 
 router.post("/admin/registration-form-config/seed-defaults", async (_req, res): Promise<void> => {
   const existing = await db.select().from(registrationFormFieldsTable);
-  if (existing.length > 0) {
-    res.json({ message: "Fields already exist", count: existing.length });
-    return;
-  }
+  const existingKeys = new Set(existing.map((f) => f.fieldKey));
 
   const defaultFields = [
     { fieldKey: "fullName", label: "الاسم الرباعي", fieldType: "text", placeholder: "أدخل اسمك الكامل", required: true, options: null, sortOrder: 1 },
@@ -148,9 +145,12 @@ router.post("/admin/registration-form-config/seed-defaults", async (_req, res): 
     { fieldKey: "message", label: "ملاحظات إضافية (اختياري)", fieldType: "textarea", placeholder: "أي تفاصيل أخرى تود إضافتها...", required: false, options: null, sortOrder: 12 },
   ];
 
-  await db.insert(registrationFormFieldsTable).values(
-    defaultFields.map((f) => ({ ...f, enabled: true }))
-  );
+  const missing = defaultFields.filter((f) => !existingKeys.has(f.fieldKey));
+  if (missing.length > 0) {
+    await db.insert(registrationFormFieldsTable).values(
+      missing.map((f) => ({ ...f, enabled: true }))
+    );
+  }
 
   const fields = await db
     .select()

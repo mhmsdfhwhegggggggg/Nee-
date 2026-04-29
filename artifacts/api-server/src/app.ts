@@ -211,6 +211,23 @@ import express, { type Express } from "express";
       await pool.query(`ALTER TABLE stats ADD COLUMN IF NOT EXISTS programs INTEGER NOT NULL DEFAULT 50`);
       await pool.query(`ALTER TABLE stats ADD COLUMN IF NOT EXISTS experts INTEGER NOT NULL DEFAULT 200`);
 
+      const formSeed = [
+        { key: "universityChoice1", label: "الجامعة - الخيار الأول", type: "university_choice", placeholder: "اختر الجامعة الأولى", required: true, sort: 8 },
+        { key: "universityChoice2", label: "الجامعة - الخيار الثاني (اختياري)", type: "university_choice", placeholder: "اختر الجامعة الثانية", required: false, sort: 9 },
+        { key: "universityChoice3", label: "الجامعة - الخيار الثالث (اختياري)", type: "university_choice", placeholder: "اختر الجامعة الثالثة", required: false, sort: 10 },
+      ];
+      for (const f of formSeed) {
+        try {
+          await pool.query(
+            `INSERT INTO registration_form_fields (field_key, label, field_type, placeholder, required, sort_order, enabled)
+             SELECT $1, $2, $3, $4, $5, $6, true
+             WHERE NOT EXISTS (SELECT 1 FROM registration_form_fields WHERE field_key = $1)`,
+            [f.key, f.label, f.type, f.placeholder, f.required, f.sort]
+          );
+        } catch {
+        }
+      }
+
       logger.info("Database tables ensured successfully");
     } catch (err) {
       logger.error({ err }, "Failed to ensure tables");
