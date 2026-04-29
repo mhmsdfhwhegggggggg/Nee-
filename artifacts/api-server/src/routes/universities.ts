@@ -436,7 +436,27 @@ router.post("/admin/universities/seed-defaults", async (req, res): Promise<void>
     ],
   };
 
-  const rashid = { name: "جامعة الرشيد", description: "Al-Rashid University", order: 9, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+  const rashid = {
+    name: "جامعة الرشيد",
+    description: "Al-Rasheed Smart University",
+    order: 9,
+    specs: [
+      { category: "كلية الطب والعلوم الصحية", name: "طب وجراحة عامة", minGpa: 78, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "دكتور صيدلة", minGpa: 70, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "الصيدلة العامة", minGpa: 70, track: "scientific" },
+      { category: "كلية الطب والعلوم الصحية", name: "الطب المخبري", minGpa: 65, track: "scientific" },
+      { category: "كلية طب الأسنان", name: "طب وجراحة الفم والأسنان", minGpa: 75, track: "scientific" },
+      { category: "كلية الهندسة والتكنولوجيا", name: "الميكاترونكس", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة والتكنولوجيا", name: "التصميم الداخلي", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة والتكنولوجيا", name: "تقنية المعلومات", minGpa: 55, track: "scientific" },
+      { category: "كلية الهندسة والتكنولوجيا", name: "الأمن السيبراني", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة والتكنولوجيا", name: "الجرافيكس والملتيميديا", minGpa: 60, track: "scientific" },
+      { category: "كلية المال والاقتصاد", name: "إدارة أعمال دولية - إنجليزي", minGpa: 55, track: "both" },
+      { category: "كلية المال والاقتصاد", name: "إدارة أعمال إنجليزي", minGpa: 55, track: "both" },
+      { category: "كلية المال والاقتصاد", name: "المحاسبة عربي", minGpa: 50, track: "both" },
+      { category: "كلية المال والاقتصاد", name: "إدارة أعمال عربي", minGpa: 50, track: "both" },
+    ],
+  };
   const modernSciences = { name: "جامعة العلوم الحديثة", description: "Modern Sciences University", order: 10, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
 
   const jeelJadeed = {
