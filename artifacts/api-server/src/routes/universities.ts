@@ -337,9 +337,29 @@ router.post("/admin/universities/seed-defaults", async (req, res): Promise<void>
 
   const saeeda = {
     name: "جامعة السعيدة",
-    description: "Al-Saeeda University",
+    description: "Al-Saeeda University - Sana'a Branch",
     order: 5,
-    specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }>,
+    specs: [
+      { category: "كلية الطب البشري", name: "الطب البشري", minGpa: 78, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "طب الأسنان", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "الصيدلة", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "دكتور صيدلي", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التخدير", minGpa: 71, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "التمريض", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "القبالة", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "المختبرات", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "الأشعة", minGpa: 69, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "تكنولوجيا المعلومات", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "هندسة معمارية", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "هندسة مدنية", minGpa: 63, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "هندسة الشبكات والاتصالات", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "المحاسبة", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة أعمال", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "نظم معلومات إدارية", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "العلوم المالية والمصرفية", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الشريعة والقانون", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "اللغة الإنجليزية والترجمة", minGpa: 58, track: "both" },
+    ],
   };
 
   const razi = {
@@ -378,11 +398,61 @@ router.post("/admin/universities/seed-defaults", async (req, res): Promise<void>
   };
 
   const ibnNafees = { name: "جامعة ابن النفيس", description: "Ibn Al-Nafees University", order: 7, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
-  const nukhba = { name: "جامعة النخبة", description: "Al-Nukhba University", order: 8, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
+
+  const nukhba = {
+    name: "جامعة النخبة",
+    description: "Al-Nukhba University",
+    order: 8,
+    specs: [
+      { category: "كلية العلوم الطبية", name: "الصيدلة", minGpa: 70, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "المختبرات", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "تمريض", minGpa: 65, track: "scientific" },
+      { category: "كلية العلوم الطبية", name: "قبالة وتوليد", minGpa: 63, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "هندسة شبكات والاتصالات", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "هندسة برمجيات", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "الجرافيك والملتيميديا", minGpa: 60, track: "scientific" },
+      { category: "كلية الهندسة وتقنية المعلومات", name: "تكنولوجيا المعلومات", minGpa: 55, track: "scientific" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "نظم معلومات إدارية", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "المحاسبة", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة الأعمال", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "العلوم المالية والمصرفية", minGpa: 50, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الشريعة والقانون", minGpa: 50, track: "both" },
+    ],
+  };
+
   const rashid = { name: "جامعة الرشيد", description: "Al-Rashid University", order: 9, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
   const modernSciences = { name: "جامعة العلوم الحديثة", description: "Modern Sciences University", order: 10, specs: [] as Array<{ category?: string; name: string; minGpa: number; track: string }> };
 
-  const ALL = [yemenia, hadara, azal, naser, saeeda, razi, ibnNafees, nukhba, rashid, modernSciences];
+  const jeelJadeed = {
+    name: "جامعة الجيل الجديد",
+    description: "Al-Jeel Al-Jadeed University",
+    order: 11,
+    specs: [
+      { category: "كلية الطب البشري", name: "طب وجراحة عامة", minGpa: 78, track: "scientific" },
+      { category: "كلية العلوم الطبية والصحية", name: "طب وجراحة الفم والأسنان", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية والصحية", name: "الصيدلة", minGpa: 76, track: "scientific" },
+      { category: "كلية العلوم الطبية والصحية", name: "الطب المخبري", minGpa: 69, track: "scientific" },
+      { category: "كلية العلوم الطبية والصحية", name: "طب الطوارئ", minGpa: 69, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "هندسة الميكاترونكس", minGpa: 71, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "هندسة الطاقة المتجددة", minGpa: 71, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الهندسة الطبية الحيوية", minGpa: 71, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "تكنولوجيا المعلومات", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الأمن السيبراني", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الذكاء الاصطناعي", minGpa: 68, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "الجرافيك والملتيميديا", minGpa: 65, track: "scientific" },
+      { category: "كلية الهندسة وتكنولوجيا المعلومات", name: "التصميم الداخلي", minGpa: 63, track: "scientific" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "نظم المعلومات الإدارية", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة الأعمال الدولية - عربي", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "إدارة الأعمال الدولية - إنجليزي", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "العلوم المالية والمصرفية (بنوك وتأمين)", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "المحاسبة", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الترجمة", minGpa: 55, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "الإعلام والاتصال", minGpa: 58, track: "both" },
+      { category: "كلية العلوم الإدارية والإنسانية", name: "القانون", minGpa: 58, track: "both" },
+    ],
+  };
+
+  const ALL = [yemenia, hadara, azal, naser, saeeda, razi, ibnNafees, nukhba, rashid, modernSciences, jeelJadeed];
 
   for (const uni of ALL) {
     const [created] = await db
