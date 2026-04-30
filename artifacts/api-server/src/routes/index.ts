@@ -9,6 +9,8 @@ import slidesRouter from "./slides";
 import adminRouter from "./admin";
 import contactInfoRouter from "./contact-info";
 import trainingFormRouter from "./training-form";
+import registrationFormConfigRouter from "./registration-form-config";
+import universitiesRouter from "./universities";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(slidesRouter);
 router.use(adminRouter);
 router.use(contactInfoRouter);
 router.use(trainingFormRouter);
+router.use(registrationFormConfigRouter);
+router.use(universitiesRouter);
 
 export default router;
