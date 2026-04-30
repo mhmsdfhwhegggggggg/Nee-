@@ -161,7 +161,7 @@ export function Header() {
             <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-3">
               <Link href="/register">
                 <button className="w-full bg-[#C41E24] text-white font-bold py-3 rounded-xl" onClick={() => setIsOpen(false)}>
-                  سجّل الآن (دراسي)
+                  سجّل الآن (مقاعد مخفضة)
                 </button>
               </Link>
               <Link href="/training-register">
