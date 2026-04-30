@@ -23,6 +23,7 @@ import Slides from "./admin/Slides";
 import ContactInfoAdmin from "./admin/ContactInfo";
 import Settings from "./admin/Settings";
 import TrainingFormBuilder from "./admin/TrainingFormBuilder";
+import RegisterFormConfig from "./admin/RegisterFormConfig";
 import TrainingRegister from "./TrainingRegister";
 
 export default function AppRoutes() {
@@ -39,6 +40,7 @@ export default function AppRoutes() {
       <Route path="/admin/contact-info" component={ContactInfoAdmin} />
       <Route path="/admin/settings" component={Settings} />
       <Route path="/admin/training-form" component={TrainingFormBuilder} />
+      <Route path="/admin/register-form-config" component={RegisterFormConfig} />
 
       <Route path="/.*">
         <Layout>
