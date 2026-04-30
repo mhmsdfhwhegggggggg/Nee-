@@ -241,6 +241,20 @@ export default function Registrations() {
                   <p className="font-medium text-slate-900">{selectedReg.message}</p>
                 </div>
               )}
+
+              {selectedReg.extraData && Object.keys(selectedReg.extraData).length > 0 && (
+                <div className="border-t pt-4">
+                  <h3 className="font-bold text-slate-800 mb-3">معلومات إضافية</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(selectedReg.extraData as Record<string, string>).map(([key, value]) => (
+                      <div key={key}>
+                        <p className="text-sm text-slate-500">{key}</p>
+                        <p className="font-medium text-slate-900">{value || "غير محدد"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
