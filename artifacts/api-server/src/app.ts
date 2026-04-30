@@ -182,6 +182,9 @@ import express, { type Express } from "express";
         } catch {
         }
       }
+      try {
+        await pool.query(`ALTER TABLE registrations ADD COLUMN IF NOT EXISTS extra_data JSONB`);
+      } catch {}
       await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS phone1 TEXT NOT NULL DEFAULT '+967 1 234 567'`);
       await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS phone2 TEXT NOT NULL DEFAULT '+967 777 123 456'`);
       await pool.query(`ALTER TABLE contact_info ADD COLUMN IF NOT EXISTS email1 TEXT NOT NULL DEFAULT 'info@almossah.org'`);
