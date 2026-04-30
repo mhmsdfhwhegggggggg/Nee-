@@ -128,7 +128,7 @@ export default function Home() {
           background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.65) 100%)"
         }} />
         <div className="absolute inset-0 z-[2]" style={{
-          background: "linear-gradient(to left, rgba(139,0,0,0.45) 0%, transparent 65%)"
+          background: "linear-gradient(to left, rgba(196,30,36,0.45) 0%, transparent 65%)"
         }} />
 
         {/* Vertical text side accent */}
@@ -201,7 +201,7 @@ export default function Home() {
                   className="flex flex-wrap gap-4"
                 >
                   <Link href="/register">
-                    <button className="group bg-[#8B0000] hover:bg-[#700000] text-white font-black text-base px-9 h-14 rounded-full shadow-2xl shadow-red-900/40 hover:shadow-red-900/60 transition-all hover:scale-[1.02] active:scale-95">
+                    <button className="group bg-[#C41E24] hover:bg-[#700000] text-white font-black text-base px-9 h-14 rounded-full shadow-2xl shadow-red-900/40 hover:shadow-red-900/60 transition-all hover:scale-[1.02] active:scale-95">
                       سجّل الآن
                       <span className="inline-block mr-2 group-hover:translate-x-[-3px] transition-transform">←</span>
                     </button>
@@ -238,7 +238,7 @@ export default function Home() {
       {/* ═══════════════════════════════════════════════════════════
           2 · QUICK STATS STRIP
       ═══════════════════════════════════════════════════════════ */}
-      <section className="bg-[#8B0000] text-white">
+      <section className="bg-[#C41E24] text-white">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-x-reverse divide-white/10">
             {statsData.map((s, i) => (
@@ -271,7 +271,7 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="inline-block text-[#8B0000] font-bold text-xs tracking-[0.25em] uppercase mb-4 border border-[#8B0000]/30 rounded-full px-4 py-1"
+              className="inline-block text-[#C41E24] font-bold text-xs tracking-[0.25em] uppercase mb-4 border border-[#C41E24]/30 rounded-full px-4 py-1"
             >
               ماذا نقدم
             </motion.span>
@@ -289,7 +289,7 @@ export default function Home() {
               whileInView={{ scaleX: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="w-16 h-1 bg-[#8B0000] mx-auto rounded-full mt-5 origin-center"
+              className="w-16 h-1 bg-[#C41E24] mx-auto rounded-full mt-5 origin-center"
             />
           </div>
 
@@ -316,7 +316,7 @@ export default function Home() {
 
               {/* Content */}
               <div className="relative z-10 p-9">
-                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6 group-hover:bg-[#8B0000] transition-colors duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6 group-hover:bg-[#C41E24] transition-colors duration-300">
                   <GraduationCap size={28} className="text-white" />
                 </div>
                 <div className="text-white/60 text-xs font-bold tracking-widest uppercase mb-2">الخدمة الأولى</div>
@@ -335,7 +335,7 @@ export default function Home() {
                   ))}
                 </div>
                 <Link href="/services#education">
-                  <button className="group/btn flex items-center gap-2 bg-white text-[#8B0000] font-black text-sm px-7 h-11 rounded-full hover:bg-yellow-400 hover:text-gray-900 transition-all duration-200">
+                  <button className="group/btn flex items-center gap-2 bg-white text-[#C41E24] font-black text-sm px-7 h-11 rounded-full hover:bg-yellow-400 hover:text-gray-900 transition-all duration-200">
                     اعرف التفاصيل
                     <ArrowLeft size={15} className="group-hover/btn:translate-x-[-3px] transition-transform" />
                   </button>
@@ -363,7 +363,7 @@ export default function Home() {
 
               {/* Content */}
               <div className="relative z-10 p-9">
-                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6 group-hover:bg-[#2D5A27] transition-colors duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-6 group-hover:bg-[#1B7A3D] transition-colors duration-300">
                   <Stethoscope size={28} className="text-white" />
                 </div>
                 <div className="text-white/60 text-xs font-bold tracking-widest uppercase mb-2">الخدمة الثانية</div>
@@ -382,7 +382,7 @@ export default function Home() {
                   ))}
                 </div>
                 <Link href="/services#medical">
-                  <button className="group/btn flex items-center gap-2 bg-white text-[#2D5A27] font-black text-sm px-7 h-11 rounded-full hover:bg-emerald-400 hover:text-gray-900 transition-all duration-200">
+                  <button className="group/btn flex items-center gap-2 bg-white text-[#1B7A3D] font-black text-sm px-7 h-11 rounded-full hover:bg-emerald-400 hover:text-gray-900 transition-all duration-200">
                     اعرف التفاصيل
                     <ArrowLeft size={15} className="group-hover/btn:translate-x-[-3px] transition-transform" />
                   </button>
@@ -390,6 +390,61 @@ export default function Home() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          3.5 · TRAINING / INSURANCE CTA BANNER
+      ═══════════════════════════════════════════════════════════ */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="relative rounded-3xl overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #1B7A3D 0%, #0d4a26 60%, #073319 100%)" }}
+          >
+            {/* Pattern overlay */}
+            <div className="absolute inset-0 opacity-[0.06]" style={{
+              backgroundImage: "repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)",
+              backgroundSize: "22px 22px"
+            }} />
+            {/* Decorative circle */}
+            <div className="absolute -left-20 -top-20 w-72 h-72 rounded-full bg-white/5" />
+            <div className="absolute -right-10 -bottom-10 w-52 h-52 rounded-full bg-white/5" />
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8 px-10 py-12">
+              {/* Text */}
+              <div className="text-center lg:text-right">
+                <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                  <span className="text-white/90 text-xs font-semibold tracking-wider">التسجيل مفتوح الآن</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-3">
+                  سجّل في الدورات التدريبية<br />
+                  <span className="text-emerald-300">والتأمين الصحي</span>
+                </h2>
+                <p className="text-white/75 text-base leading-relaxed max-w-md">
+                  أكمل نموذج التسجيل الإلكتروني للاشتراك في برامجنا التدريبية أو الحصول على بطاقة التأمين الصحي — سريع وسهل!
+                </p>
+              </div>
+              {/* Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                <Link href="/training-register">
+                  <button className="bg-white text-[#1B7A3D] hover:bg-emerald-50 font-black text-base px-10 h-14 rounded-full shadow-xl transition-all hover:scale-[1.03] active:scale-95 whitespace-nowrap">
+                    سجّل الآن ←
+                  </button>
+                </Link>
+                <Link href="/services#medical">
+                  <button className="bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold text-base px-8 h-14 rounded-full transition-all whitespace-nowrap">
+                    اعرف المزيد
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -417,14 +472,14 @@ export default function Home() {
                 />
               </div>
               {/* Floating card — top right */}
-              <div className="absolute -top-6 -left-6 bg-[#8B0000] text-white rounded-2xl p-5 shadow-xl shadow-red-900/30">
+              <div className="absolute -top-6 -left-6 bg-[#C41E24] text-white rounded-2xl p-5 shadow-xl shadow-red-900/30">
                 <div className="text-4xl font-black">{stats?.yearsExperience ?? 12}+</div>
                 <div className="text-xs text-white/80 font-medium mt-1">سنة من العطاء</div>
               </div>
               {/* Floating card — bottom left */}
               <div className="absolute -bottom-5 -right-5 bg-white border border-gray-100 rounded-2xl p-5 shadow-xl flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#2D5A27]/10 rounded-xl flex items-center justify-center">
-                  <Star size={20} className="text-[#2D5A27]" fill="#2D5A27" />
+                <div className="w-10 h-10 bg-[#1B7A3D]/10 rounded-xl flex items-center justify-center">
+                  <Star size={20} className="text-[#1B7A3D]" fill="#1B7A3D" />
                 </div>
                 <div>
                   <div className="text-xl font-black text-gray-900">{(stats?.beneficiaries ?? 15000).toLocaleString("ar-EG")}+</div>
@@ -432,7 +487,7 @@ export default function Home() {
                 </div>
               </div>
               {/* Green accent block */}
-              <div className="absolute top-1/2 -right-8 -translate-y-1/2 w-14 h-40 bg-[#2D5A27] rounded-2xl hidden lg:block" />
+              <div className="absolute top-1/2 -right-8 -translate-y-1/2 w-14 h-40 bg-[#1B7A3D] rounded-2xl hidden lg:block" />
             </motion.div>
 
             {/* Text */}
@@ -443,12 +498,12 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               className="order-1 lg:order-2"
             >
-              <span className="inline-block text-[#8B0000] font-bold text-xs tracking-[0.25em] uppercase mb-4 border border-[#8B0000]/30 rounded-full px-4 py-1">
+              <span className="inline-block text-[#C41E24] font-bold text-xs tracking-[0.25em] uppercase mb-4 border border-[#C41E24]/30 rounded-full px-4 py-1">
                 تعرّف علينا
               </span>
               <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight mb-6">
                 المؤسسة الوطنية<br />
-                <span className="text-[#8B0000]">للتنمية الشاملة</span>
+                <span className="text-[#C41E24]">للتنمية الشاملة</span>
               </h2>
               <p className="text-gray-600 text-lg leading-[1.9] mb-5">
                 مؤسسة يمنية وطنية رائدة، تأسست لتكون جسراً حقيقياً يربط أبناء اليمن بفرص التعليم والرعاية الصحية الجيدة، من خلال شراكات استراتيجية مع أفضل الجامعات والمستشفيات.
@@ -465,19 +520,19 @@ export default function Home() {
                   { icon: <CheckCircle2 size={16} />, text: "معتمدون رسمياً من الجهات المختصة" },
                 ].map(({ icon, text }) => (
                   <div key={text} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                    <div className="w-8 h-8 bg-[#8B0000]/10 rounded-lg flex items-center justify-center text-[#8B0000]">{icon}</div>
+                    <div className="w-8 h-8 bg-[#C41E24]/10 rounded-lg flex items-center justify-center text-[#C41E24]">{icon}</div>
                     <span className="text-sm text-gray-700 font-medium">{text}</span>
                   </div>
                 ))}
               </div>
               <div className="flex flex-wrap gap-4">
                 <Link href="/about">
-                  <button className="bg-[#8B0000] hover:bg-[#700000] text-white font-bold px-8 h-12 rounded-full transition-all hover:shadow-lg hover:shadow-red-900/20">
+                  <button className="bg-[#C41E24] hover:bg-[#700000] text-white font-bold px-8 h-12 rounded-full transition-all hover:shadow-lg hover:shadow-red-900/20">
                     اقرأ المزيد عنّا
                   </button>
                 </Link>
                 <Link href="/services">
-                  <button className="border-2 border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000] hover:text-white font-bold px-8 h-12 rounded-full transition-all">
+                  <button className="border-2 border-[#C41E24] text-[#C41E24] hover:bg-[#C41E24] hover:text-white font-bold px-8 h-12 rounded-full transition-all">
                     تصفح خدماتنا
                   </button>
                 </Link>
@@ -496,7 +551,7 @@ export default function Home() {
           alt=""
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(139,0,0,0.88) 0%, rgba(45,90,39,0.82) 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(196,30,36,0.88) 0%, rgba(27,122,61,0.82) 100%)" }} />
         <div className="absolute inset-0 flex items-center justify-center text-center px-6">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -519,13 +574,13 @@ export default function Home() {
         <div className="container mx-auto px-6">
           <div className="flex justify-between items-end mb-14">
             <div>
-              <span className="inline-block text-[#8B0000] font-bold text-xs tracking-[0.25em] uppercase mb-3 border border-[#8B0000]/30 rounded-full px-4 py-1">
+              <span className="inline-block text-[#C41E24] font-bold text-xs tracking-[0.25em] uppercase mb-3 border border-[#C41E24]/30 rounded-full px-4 py-1">
                 آخر المستجدات
               </span>
               <h2 className="text-4xl font-black text-gray-900">أحدث الأخبار</h2>
             </div>
             <Link href="/media/news">
-              <button className="text-[#8B0000] font-semibold text-sm flex items-center gap-2 hover:gap-3 transition-all hidden md:flex">
+              <button className="text-[#C41E24] font-semibold text-sm flex items-center gap-2 hover:gap-3 transition-all hidden md:flex">
                 عرض الكل <ArrowLeft size={16} />
               </button>
             </Link>
@@ -550,12 +605,12 @@ export default function Home() {
                 </div>
                 <div className={`p-6 ${i === 0 ? "flex-1 flex flex-col" : ""}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#8B0000]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C41E24]" />
                     <span className="text-xs text-gray-400">{new Date(news.createdAt).toLocaleDateString("ar-EG")}</span>
                   </div>
                   <h3 className={`font-bold text-gray-900 mb-2 ${i === 0 ? "text-xl" : "text-base"} line-clamp-2`}>{news.title}</h3>
                   <p className="text-gray-500 text-sm line-clamp-3 mb-4 leading-relaxed">{news.excerpt}</p>
-                  <span className="text-[#8B0000] text-sm font-bold group-hover:gap-2 flex items-center gap-1 transition-all mt-auto cursor-pointer">
+                  <span className="text-[#C41E24] text-sm font-bold group-hover:gap-2 flex items-center gap-1 transition-all mt-auto cursor-pointer">
                     اقرأ المزيد <ArrowLeft size={14} />
                   </span>
                 </div>
@@ -583,7 +638,7 @@ export default function Home() {
       <section className="py-16 bg-white overflow-hidden border-y border-gray-100">
         <div className="container mx-auto px-6 text-center mb-10">
           <span className="text-gray-400 text-xs tracking-[0.3em] font-semibold uppercase">شركاء النجاح</span>
-          <h2 className="text-2xl font-black text-gray-900 mt-2">شركاء النجاح</h2>
+          <h2 className="text-2xl font-black text-gray-900 mt-2">مؤسساتنا الشريكة</h2>
         </div>
         <div className="relative flex overflow-hidden py-2">
           <div className="flex gap-5 animate-[marquee_28s_linear_infinite] shrink-0">
@@ -619,7 +674,7 @@ export default function Home() {
         </div>
         <div className="text-center mt-10">
           <Link href="/partners-success">
-            <button className="border-2 border-gray-200 hover:border-[#8B0000] text-gray-600 hover:text-[#8B0000] font-semibold text-sm px-8 h-11 rounded-full transition-all">
+            <button className="border-2 border-gray-200 hover:border-[#C41E24] text-gray-600 hover:text-[#C41E24] font-semibold text-sm px-8 h-11 rounded-full transition-all">
               تعرف على جميع شركائنا
             </button>
           </Link>
@@ -637,7 +692,7 @@ export default function Home() {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0" style={{
-            background: "linear-gradient(135deg, rgba(139,0,0,0.92) 0%, rgba(80,0,0,0.88) 60%, rgba(45,90,39,0.80) 100%)"
+            background: "linear-gradient(135deg, rgba(196,30,36,0.92) 0%, rgba(140,20,24,0.88) 60%, rgba(27,122,61,0.80) 100%)"
           }} />
           {/* Geometric pattern overlay */}
           <div className="absolute inset-0 opacity-[0.04]" style={{
@@ -665,7 +720,7 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Link href="/register">
-                <button className="bg-white text-[#8B0000] hover:bg-yellow-300 hover:text-gray-900 font-black text-lg px-12 h-14 rounded-full shadow-2xl transition-all hover:scale-[1.02] active:scale-95">
+                <button className="bg-white text-[#C41E24] hover:bg-yellow-300 hover:text-gray-900 font-black text-lg px-12 h-14 rounded-full shadow-2xl transition-all hover:scale-[1.02] active:scale-95">
                   سجّل الآن مجاناً
                 </button>
               </Link>
