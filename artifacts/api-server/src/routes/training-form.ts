@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
+import crypto from "crypto";
 
 const router: IRouter = Router();
 
 function isAuthenticated(req: import("express").Request): boolean {
-  const crypto = require("crypto");
   const JWT_SECRET = process.env.SESSION_SECRET ?? "almossah-national-secret-2024";
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
