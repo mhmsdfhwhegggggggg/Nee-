@@ -32,6 +32,7 @@ export function Header() {
         { href: "/programs#scholarships", label: "المنح الدراسية" },
         { href: "/programs#discounts", label: "التخفيضات الجامعية" },
         { href: "/programs#insurance", label: "التأمين الصحي" },
+        { href: "/training-register", label: "سجّل في برنامج ←" },
       ],
     },
     {
@@ -160,7 +161,12 @@ export function Header() {
             <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-3">
               <Link href="/register">
                 <button className="w-full bg-[#C41E24] text-white font-bold py-3 rounded-xl" onClick={() => setIsOpen(false)}>
-                  سجّل الآن
+                  سجّل الآن (دراسي)
+                </button>
+              </Link>
+              <Link href="/training-register">
+                <button className="w-full bg-[#1B7A3D] text-white font-bold py-3 rounded-xl" onClick={() => setIsOpen(false)}>
+                  سجّل في برنامج تدريبي / تأمين
                 </button>
               </Link>
             </div>
