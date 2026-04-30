@@ -225,7 +225,7 @@ export default function Register() {
                               <SelectValue placeholder="اختر المحافظة" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="max-h-56 overflow-y-auto">
                             {cities.map((city) => (
                               <SelectItem key={city} value={city}>
                                 {city}
