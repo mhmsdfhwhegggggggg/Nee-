@@ -288,11 +288,18 @@ export default function Services() {
           <p className="text-white/80 text-lg mb-10 max-w-lg mx-auto">
             سجّل الآن واستفد من خدماتنا التعليمية والصحية بأفضل الأسعار
           </p>
-          <Link href="/register">
-            <button className="bg-white text-[#C41E24] hover:bg-yellow-300 hover:text-gray-900 font-black text-lg px-12 h-14 rounded-full shadow-2xl transition-all hover:scale-[1.02]">
-              سجّل الآن مجاناً
-            </button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/register">
+              <button className="bg-white text-[#C41E24] hover:bg-yellow-300 hover:text-gray-900 font-black text-lg px-12 h-14 rounded-full shadow-2xl transition-all hover:scale-[1.02]">
+                تسجيل دراسي (منح وتخفيضات)
+              </button>
+            </Link>
+            <Link href="/training-register">
+              <button className="bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-black text-lg px-12 h-14 rounded-full shadow-2xl transition-all hover:scale-[1.02]">
+                تسجيل تدريبي / تأمين صحي ←
+              </button>
+            </Link>
+          </div>
         </div>
       </section>
     </div>
