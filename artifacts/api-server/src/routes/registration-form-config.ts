@@ -126,15 +126,14 @@ router.delete("/admin/registration-form-config/:id", async (req, res): Promise<v
   res.sendStatus(204);
 });
 
-router.post("/admin/registration-form-config/seed-defaults", async (_req, res): Promise<void> => {
-  const existing = await db.select().from(registrationFormFieldsTable);
-  const existingKeys = new Set(existing.map((f) => f.fieldKey));
+router.post("/admin/registration-form-config/seed-defaults", async (req, res): Promise<void> => {
+  const reset = req.query.reset === "true";
 
   const defaultFields = [
     { fieldKey: "fullName", label: "الاسم الرباعي", fieldType: "text", placeholder: "أدخل اسمك الكامل", required: true, options: null, sortOrder: 1 },
     { fieldKey: "phone", label: "رقم الهاتف", fieldType: "text", placeholder: "7xx xxx xxx", required: true, options: null, sortOrder: 2 },
     { fieldKey: "email", label: "البريد الإلكتروني", fieldType: "text", placeholder: "example@email.com", required: true, options: null, sortOrder: 3 },
-    { fieldKey: "city", label: "المحافظة/المدينة", fieldType: "select", placeholder: "اختر المحافظة", required: true, options: JSON.stringify(["صنعاء", "عدن", "تعز", "حضرموت", "إب", "الحديدة", "مأرب", "المكلا"]), sortOrder: 4 },
+    { fieldKey: "city", label: "المحافظة/المدينة", fieldType: "select", placeholder: "اختر المحافظة", required: true, options: JSON.stringify(["صنعاء", "عدن", "تعز", "حضرموت", "إب", "الحديدة", "مأرب", "المكلا", "ذمار", "صعدة", "شبوة", "البيضاء", "لحج", "أبين", "الجوف", "رمية", "سقطرى", "المهرة", "ريمة", "الضالع"]), sortOrder: 4 },
     { fieldKey: "department", label: "القسم", fieldType: "select", placeholder: "اختر القسم", required: true, options: JSON.stringify(["علمي", "أدبي"]), sortOrder: 5 },
     { fieldKey: "gpa", label: "المعدل", fieldType: "text", placeholder: "مثال: 85.5", required: true, options: null, sortOrder: 6 },
     { fieldKey: "programType", label: "البرنامج المطلوب", fieldType: "select", placeholder: "اختر البرنامج", required: true, options: JSON.stringify(["منح دراسية", "تخفيضات جامعية", "تأمين طبي", "برامج أكاديمية"]), sortOrder: 7 },
@@ -145,11 +144,22 @@ router.post("/admin/registration-form-config/seed-defaults", async (_req, res): 
     { fieldKey: "message", label: "ملاحظات إضافية (اختياري)", fieldType: "textarea", placeholder: "أي تفاصيل أخرى تود إضافتها...", required: false, options: null, sortOrder: 12 },
   ];
 
-  const missing = defaultFields.filter((f) => !existingKeys.has(f.fieldKey));
-  if (missing.length > 0) {
+  if (reset) {
+    // Delete ALL existing fields and re-seed from scratch
+    await db.delete(registrationFormFieldsTable);
     await db.insert(registrationFormFieldsTable).values(
-      missing.map((f) => ({ ...f, enabled: true }))
+      defaultFields.map((f) => ({ ...f, enabled: true }))
     );
+  } else {
+    // Only add missing fields (non-destructive)
+    const existing = await db.select().from(registrationFormFieldsTable);
+    const existingKeys = new Set(existing.map((f) => f.fieldKey));
+    const missing = defaultFields.filter((f) => !existingKeys.has(f.fieldKey));
+    if (missing.length > 0) {
+      await db.insert(registrationFormFieldsTable).values(
+        missing.map((f) => ({ ...f, enabled: true }))
+      );
+    }
   }
 
   const fields = await db
