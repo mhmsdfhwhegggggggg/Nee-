@@ -47,6 +47,8 @@ const FIELD_TYPES = [
   { value: "select_with_other", label: "قائمة منسدلة مع خيار أخرى" },
   { value: "textarea", label: "نص طويل" },
   { value: "image", label: "صورة" },
+  { value: "university_select", label: "قائمة الجامعات (ديناميكية)" },
+  { value: "specialization_select", label: "قائمة التخصصات (ديناميكية)" },
 ];
 
 export default function RegisterFormConfig() {
@@ -445,6 +447,36 @@ export default function RegisterFormConfig() {
                 </label>
               </div>
             </div>
+
+            {editingField.fieldType === "university_select" && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-blue-800 mb-1">قائمة الجامعات الديناميكية</p>
+                <p className="text-xs text-blue-600">هذا الحقل سيعرض تلقائياً قائمة الجامعات المُدارة من قسم "الجامعات والتخصصات" أدناه. لا حاجة لإضافة خيارات يدوياً.</p>
+              </div>
+            )}
+
+            {editingField.fieldType === "specialization_select" && (
+              <div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-3">
+                  <p className="text-sm font-medium text-emerald-800 mb-1">قائمة التخصصات الديناميكية</p>
+                  <p className="text-xs text-emerald-600">أضف مفتاح حقل الجامعة المرتبط به (مثال: universityChoice1) لعرض تخصصات الجامعة المختارة فقط. اتركه فارغاً لعرض جميع التخصصات.</p>
+                </div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">مفتاح حقل الجامعة المرتبط (اختياري)</label>
+                <select
+                  value={editingField.options?.[0] || ""}
+                  onChange={(e) => setEditingField({ ...editingField, options: e.target.value ? [e.target.value] : null })}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                >
+                  <option value="">— بدون ربط (كل التخصصات) —</option>
+                  {fields.filter(f => f.fieldType === "university_select" || ["universityChoice1","universityChoice2","universityChoice3"].includes(f.fieldKey)).map(f => (
+                    <option key={f.id} value={f.fieldKey}>{f.label} ({f.fieldKey})</option>
+                  ))}
+                  {fields.filter(f => f.fieldType === "select" || f.fieldType === "select_with_other").map(f => (
+                    <option key={f.id} value={f.fieldKey}>{f.label} ({f.fieldKey})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {(editingField.fieldType === "select" || editingField.fieldType === "select_with_other") && (
               <div>
