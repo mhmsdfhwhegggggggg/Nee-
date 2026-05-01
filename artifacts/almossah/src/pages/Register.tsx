@@ -56,6 +56,9 @@ function parseOptions(raw: string[] | string | null): string[] {
 
 const UNIVERSITY_KEYS = ["universityChoice1", "universityChoice2", "universityChoice3"];
 
+// Specialization key for a given university field key
+const specKey = (uniKey: string) => `${uniKey}_specialization`;
+
 class FieldErrorBoundary extends Component<{ children: ReactNode; label: string }, { hasError: boolean }> {
   constructor(props: { children: ReactNode; label: string }) {
     super(props);
@@ -85,7 +88,8 @@ function ineligibleReason(spec: Specialization, gpa: number, department: string)
     spec.track === "both" ||
     (department === "علمي" && spec.track === "scientific") ||
     (department === "أدبي" && (spec.track === "literary" || spec.track === "both"));
-  if (!trackOk && !gpaOk) return `هذا التخصص للقسم العلمي فقط والحد الأدنى للمعدل ${spec.minGpa}%`;
+  if (!trackOk && !gpaOk)
+    return `هذا التخصص للقسم العلمي فقط والحد الأدنى للمعدل ${spec.minGpa}%`;
   if (!trackOk) return "هذا التخصص غير متاح لقسمك الدراسي";
   if (!gpaOk) return `للأسف، معدلك لا يؤهلك لهذا التخصص — الحد الأدنى المطلوب ${spec.minGpa}%`;
   return "";
@@ -121,16 +125,18 @@ function SpecializationSelect({ specs, value, placeholder, gpa, department, onCh
   }
 
   const selectedSpec = specs.find(s => s.name === value);
+  const blocked = selectedSpec ? !isEligible(selectedSpec, gpa, department) : false;
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors text-right"
+        className={`w-full flex items-center justify-between border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors text-right
+          ${blocked ? "border-red-300 focus:ring-red-200" : "border-gray-300 hover:border-primary"}`}
       >
         <ChevronDown size={16} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
-        <span className={value ? "text-gray-900" : "text-gray-400"}>
+        <span className={value ? (blocked ? "text-red-500" : "text-gray-900") : "text-gray-400"}>
           {value || placeholder || "اختر التخصص..."}
         </span>
       </button>
@@ -184,7 +190,7 @@ function SpecializationSelect({ specs, value, placeholder, gpa, department, onCh
         </div>
       )}
 
-      {selectedSpec && !isEligible(selectedSpec, gpa, department) && (
+      {blocked && selectedSpec && (
         <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
           <Lock size={11} />
           {ineligibleReason(selectedSpec, gpa, department)}
@@ -220,6 +226,10 @@ export default function Register() {
 
   const setValue = (key: string, val: string) =>
     setValues(prev => ({ ...prev, [key]: val }));
+
+  // When a university changes, clear the paired specialization
+  const setUniversityValue = (key: string, val: string) =>
+    setValues(prev => ({ ...prev, [key]: val, [specKey(key)]: "" }));
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -277,11 +287,13 @@ export default function Register() {
     placeholder: string,
     options: string[],
     required: boolean,
-    withOther: boolean
+    withOther: boolean,
+    onChangeFn?: (val: string) => void
   ) {
     const isOther = otherMode[key] || false;
     const allOptions = withOther ? [...options, "أخرى"] : options;
     const validOptions = allOptions.filter(o => o && o.trim() !== "");
+    const handleChange = onChangeFn ?? ((val: string) => setValue(key, val));
 
     if (validOptions.length === 0) {
       return (
@@ -289,7 +301,7 @@ export default function Register() {
           placeholder={placeholder}
           value={value}
           required={required}
-          onChange={e => setValue(key, e.target.value)}
+          onChange={e => handleChange(e.target.value)}
         />
       );
     }
@@ -300,13 +312,13 @@ export default function Register() {
           <Input
             placeholder="اكتب الإجابة"
             value={value}
-            onChange={e => setValue(key, e.target.value)}
+            onChange={e => handleChange(e.target.value)}
             autoFocus
             required={required}
           />
           <button
             type="button"
-            onClick={() => { setOtherMode(prev => ({ ...prev, [key]: false })); setValue(key, ""); }}
+            onClick={() => { setOtherMode(prev => ({ ...prev, [key]: false })); handleChange(""); }}
             className="text-xs text-gray-400 hover:text-primary whitespace-nowrap px-2"
           >
             اختر من القائمة
@@ -321,9 +333,9 @@ export default function Register() {
         onValueChange={val => {
           if (val === "أخرى") {
             setOtherMode(prev => ({ ...prev, [key]: true }));
-            setValue(key, "");
+            handleChange("");
           } else {
-            setValue(key, val);
+            handleChange(val);
           }
         }}
       >
@@ -336,6 +348,42 @@ export default function Register() {
           ))}
         </SelectContent>
       </Select>
+    );
+  }
+
+  // Renders the automatic specialization block below a university field
+  function renderSpecializationBlock(uniKey: string, uniLabel: string) {
+    const selectedUniName = values[uniKey] || "";
+    if (!selectedUniName || selectedUniName === "أخرى") return null;
+
+    const uni = universities.find(u => u.name === selectedUniName);
+    const specs = uni ? uni.specializations.filter(s => s.enabled) : [];
+    if (specs.length === 0) return null;
+
+    const gpa = parseFloat(values["gpa"] || "0") || 0;
+    const department = values["department"] || "";
+    const sKey = specKey(uniKey);
+    const specLabel = uniLabel.replace(/الجامعة\s*-?\s*/, "").trim();
+
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <label className="block text-sm font-medium text-gray-600 mb-1.5">
+          التخصص — {specLabel}
+        </label>
+        <SpecializationSelect
+          specs={specs}
+          value={values[sKey] || ""}
+          placeholder="اختر التخصص..."
+          gpa={gpa}
+          department={department}
+          onChange={val => setValue(sKey, val)}
+          onBlock={reason => toast({
+            variant: "destructive",
+            title: "التخصص غير متاح",
+            description: reason,
+          })}
+        />
+      </div>
     );
   }
 
@@ -387,13 +435,17 @@ export default function Register() {
 
     if (isUniversityField) {
       const uniNames = universities.map(u => u.name).filter(n => n && n.trim() !== "");
-      return renderSelectWithOptions(key, value, placeholder || "اختر الجامعة...", uniNames, field.required, true);
+      return (
+        <div>
+          {renderSelectWithOptions(key, value, placeholder || "اختر الجامعة...", uniNames, field.required, true, (val) => setUniversityValue(key, val))}
+          {renderSpecializationBlock(key, field.label)}
+        </div>
+      );
     }
 
     if (field.fieldType === "specialization_select") {
       const linkedUniversityKey = parseOptions(field.options)[0] || "";
       const selectedUniversityName = linkedUniversityKey ? (values[linkedUniversityKey] || "") : "";
-
       let specs: Specialization[] = [];
       if (selectedUniversityName) {
         const uni = universities.find(u => u.name === selectedUniversityName);
@@ -401,10 +453,8 @@ export default function Register() {
       } else {
         specs = universities.flatMap(u => u.specializations.filter(s => s.enabled));
       }
-
       const gpa = parseFloat(values["gpa"] || "0") || 0;
       const department = values["department"] || "";
-
       const noUniSelected = linkedUniversityKey && !values[linkedUniversityKey];
       if (noUniSelected) {
         return (
@@ -413,7 +463,6 @@ export default function Register() {
           </div>
         );
       }
-
       return (
         <SpecializationSelect
           specs={specs}
@@ -422,11 +471,7 @@ export default function Register() {
           gpa={gpa}
           department={department}
           onChange={val => setValue(key, val)}
-          onBlock={reason => toast({
-            variant: "destructive",
-            title: "التخصص غير متاح",
-            description: reason,
-          })}
+          onBlock={reason => toast({ variant: "destructive", title: "التخصص غير متاح", description: reason })}
         />
       );
     }
