@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from "react";
+import { useState, useEffect, useRef, Component, type ReactNode } from "react";
 import { useCreateRegistration } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, ChevronDown, Lock } from "lucide-react";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
@@ -32,6 +32,8 @@ interface Specialization {
   id: number;
   name: string;
   category: string | null;
+  minGpa: number;
+  track: string;
   enabled: boolean;
 }
 
@@ -59,20 +61,137 @@ class FieldErrorBoundary extends Component<{ children: ReactNode; label: string 
     super(props);
     this.state = { hasError: false };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
+  static getDerivedStateFromError() { return { hasError: true }; }
   render() {
     if (this.state.hasError) {
-      return (
-        <Input
-          placeholder={`حقل ${this.props.label}`}
-          onChange={() => {}}
-        />
-      );
+      return <Input placeholder={`حقل ${this.props.label}`} onChange={() => {}} />;
     }
     return this.props.children;
   }
+}
+
+function isEligible(spec: Specialization, gpa: number, department: string): boolean {
+  const gpaOk = gpa === 0 || gpa >= spec.minGpa;
+  const trackOk =
+    spec.track === "both" ||
+    (department === "علمي" && spec.track === "scientific") ||
+    (department === "أدبي" && (spec.track === "literary" || spec.track === "both"));
+  return gpaOk && trackOk;
+}
+
+function ineligibleReason(spec: Specialization, gpa: number, department: string): string {
+  const gpaOk = gpa === 0 || gpa >= spec.minGpa;
+  const trackOk =
+    spec.track === "both" ||
+    (department === "علمي" && spec.track === "scientific") ||
+    (department === "أدبي" && (spec.track === "literary" || spec.track === "both"));
+  if (!trackOk && !gpaOk) return `هذا التخصص للقسم العلمي فقط والحد الأدنى للمعدل ${spec.minGpa}%`;
+  if (!trackOk) return "هذا التخصص غير متاح لقسمك الدراسي";
+  if (!gpaOk) return `للأسف، معدلك لا يؤهلك لهذا التخصص — الحد الأدنى المطلوب ${spec.minGpa}%`;
+  return "";
+}
+
+interface SpecSelectProps {
+  specs: Specialization[];
+  value: string;
+  placeholder: string;
+  gpa: number;
+  department: string;
+  onChange: (val: string) => void;
+  onBlock: (reason: string) => void;
+}
+
+function SpecializationSelect({ specs, value, placeholder, gpa, department, onChange, onBlock }: SpecSelectProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const grouped: Record<string, Specialization[]> = {};
+  for (const s of specs) {
+    const cat = s.category || "تخصصات";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(s);
+  }
+
+  const selectedSpec = specs.find(s => s.name === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors text-right"
+      >
+        <ChevronDown size={16} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
+        <span className={value ? "text-gray-900" : "text-gray-400"}>
+          {value || placeholder || "اختر التخصص..."}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-80 overflow-y-auto">
+          {Object.entries(grouped).map(([cat, catSpecs]) => (
+            <div key={cat}>
+              <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 bg-gray-50 border-b border-gray-100 sticky top-0">
+                {cat}
+              </div>
+              {catSpecs.map(spec => {
+                const eligible = isEligible(spec, gpa, department);
+                const isSelected = spec.name === value;
+                return (
+                  <button
+                    key={spec.id}
+                    type="button"
+                    onClick={() => {
+                      if (!eligible) {
+                        onBlock(ineligibleReason(spec, gpa, department));
+                      } else {
+                        onChange(spec.name);
+                        setOpen(false);
+                      }
+                    }}
+                    className={`w-full text-right px-4 py-2.5 text-sm flex items-center justify-between gap-2 transition-colors
+                      ${isSelected ? "bg-primary/10 text-primary font-medium" : ""}
+                      ${eligible
+                        ? "hover:bg-primary/5 text-gray-800 cursor-pointer"
+                        : "text-gray-400 cursor-pointer bg-gray-50/60 hover:bg-red-50/60"
+                      }`}
+                  >
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {!eligible && <Lock size={12} className="text-gray-400" />}
+                      {!eligible && spec.minGpa > 0 && (
+                        <span className="text-[10px] bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full font-medium">
+                          {spec.minGpa}%+
+                        </span>
+                      )}
+                    </div>
+                    <span className={eligible ? "" : "line-through decoration-gray-300"}>{spec.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          {specs.length === 0 && (
+            <div className="px-4 py-6 text-sm text-gray-400 text-center">لا توجد تخصصات متاحة</div>
+          )}
+        </div>
+      )}
+
+      {selectedSpec && !isEligible(selectedSpec, gpa, department) && (
+        <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+          <Lock size={11} />
+          {ineligibleReason(selectedSpec, gpa, department)}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function Register() {
@@ -274,17 +393,42 @@ export default function Register() {
     if (field.fieldType === "specialization_select") {
       const linkedUniversityKey = parseOptions(field.options)[0] || "";
       const selectedUniversityName = linkedUniversityKey ? (values[linkedUniversityKey] || "") : "";
-      let specOptions: string[] = [];
+
+      let specs: Specialization[] = [];
       if (selectedUniversityName) {
         const uni = universities.find(u => u.name === selectedUniversityName);
-        specOptions = uni ? uni.specializations.filter(s => s.enabled).map(s => s.name).filter(n => n && n.trim() !== "") : [];
+        specs = uni ? uni.specializations.filter(s => s.enabled) : [];
       } else {
-        specOptions = universities.flatMap(u => u.specializations.filter(s => s.enabled).map(s => s.name)).filter(n => n && n.trim() !== "");
+        specs = universities.flatMap(u => u.specializations.filter(s => s.enabled));
       }
-      const linkedLabel = linkedUniversityKey && !values[linkedUniversityKey]
-        ? placeholder || "اختر الجامعة أولاً..."
-        : placeholder || "اختر التخصص...";
-      return renderSelectWithOptions(key, value, linkedLabel, specOptions, field.required, false);
+
+      const gpa = parseFloat(values["gpa"] || "0") || 0;
+      const department = values["department"] || "";
+
+      const noUniSelected = linkedUniversityKey && !values[linkedUniversityKey];
+      if (noUniSelected) {
+        return (
+          <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400 bg-gray-50">
+            {placeholder || "اختر الجامعة أولاً..."}
+          </div>
+        );
+      }
+
+      return (
+        <SpecializationSelect
+          specs={specs}
+          value={value}
+          placeholder={placeholder || "اختر التخصص..."}
+          gpa={gpa}
+          department={department}
+          onChange={val => setValue(key, val)}
+          onBlock={reason => toast({
+            variant: "destructive",
+            title: "التخصص غير متاح",
+            description: reason,
+          })}
+        />
+      );
     }
 
     if (field.fieldType === "select" || field.fieldType === "select_with_other") {
