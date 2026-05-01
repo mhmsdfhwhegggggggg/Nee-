@@ -72,12 +72,32 @@ export default function RegisterFormConfig() {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
+  function normalizeFieldOptions(data: unknown[]): FormField[] {
+    return data.map((f: unknown) => {
+      const field = f as FormField & { options: unknown };
+      let opts: string[] | null = null;
+      if (Array.isArray(field.options)) {
+        opts = (field.options as unknown[]).filter((o): o is string => typeof o === "string" && o.trim() !== "");
+      } else if (typeof field.options === "string" && field.options) {
+        try {
+          const parsed = JSON.parse(field.options as string);
+          if (Array.isArray(parsed)) opts = parsed.filter((o: unknown): o is string => typeof o === "string" && (o as string).trim() !== "");
+          else if (typeof parsed === "string") {
+            const parsed2 = JSON.parse(parsed);
+            if (Array.isArray(parsed2)) opts = parsed2.filter((o: unknown): o is string => typeof o === "string" && (o as string).trim() !== "");
+          }
+        } catch {}
+      }
+      return { ...field, options: opts };
+    });
+  }
+
   const fetchFields = async () => {
     try {
       const res = await fetch("/api/admin/registration-form-config", { headers });
       if (res.ok) {
         const data = await res.json();
-        setFields(data);
+        setFields(normalizeFieldOptions(Array.isArray(data) ? data : []));
       }
     } catch {}
     setLoading(false);
