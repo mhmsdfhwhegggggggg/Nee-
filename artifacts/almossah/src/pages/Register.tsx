@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, type ReactNode } from "react";
 import { useCreateRegistration } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -29,24 +28,52 @@ interface FormFieldConfig {
   enabled: boolean;
 }
 
+interface Specialization {
+  id: number;
+  name: string;
+  category: string | null;
+  enabled: boolean;
+}
+
 interface University {
   id: number;
   name: string;
   enabled: boolean;
-  specializations: { id: number; name: string; category: string | null; minGpa: number; track: string; enabled: boolean }[];
+  specializations: Specialization[];
 }
 
 function parseOptions(raw: string[] | string | null): string[] {
   if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw)) return raw.filter(o => typeof o === "string" && o.trim() !== "");
   try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
+    const parsed = JSON.parse(raw as string);
+    if (Array.isArray(parsed)) return parsed.filter((o: unknown) => typeof o === "string" && (o as string).trim() !== "");
   } catch {}
   return String(raw).split("\n").map(s => s.trim()).filter(Boolean);
 }
 
 const UNIVERSITY_KEYS = ["universityChoice1", "universityChoice2", "universityChoice3"];
+
+class FieldErrorBoundary extends Component<{ children: ReactNode; label: string }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; label: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Input
+          placeholder={`حقل ${this.props.label}`}
+          onChange={() => {}}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function Register() {
   const { toast } = useToast();
@@ -69,7 +96,7 @@ export default function Register() {
       setFields(Array.isArray(fieldsData) ? fieldsData.filter((f: FormFieldConfig) => f.enabled) : []);
       setUniversities(Array.isArray(uniData) ? uniData.filter((u: University) => u.enabled) : []);
       setIsLoading(false);
-    });
+    }).catch(() => setIsLoading(false));
   }, []);
 
   const setValue = (key: string, val: string) =>
@@ -125,11 +152,78 @@ export default function Register() {
     );
   }
 
+  function renderSelectWithOptions(
+    key: string,
+    value: string,
+    placeholder: string,
+    options: string[],
+    required: boolean,
+    withOther: boolean
+  ) {
+    const isOther = otherMode[key] || false;
+    const allOptions = withOther ? [...options, "أخرى"] : options;
+    const validOptions = allOptions.filter(o => o && o.trim() !== "");
+
+    if (validOptions.length === 0) {
+      return (
+        <Input
+          placeholder={placeholder}
+          value={value}
+          required={required}
+          onChange={e => setValue(key, e.target.value)}
+        />
+      );
+    }
+
+    if (isOther) {
+      return (
+        <div className="flex gap-2">
+          <Input
+            placeholder="اكتب الإجابة"
+            value={value}
+            onChange={e => setValue(key, e.target.value)}
+            autoFocus
+            required={required}
+          />
+          <button
+            type="button"
+            onClick={() => { setOtherMode(prev => ({ ...prev, [key]: false })); setValue(key, ""); }}
+            className="text-xs text-gray-400 hover:text-primary whitespace-nowrap px-2"
+          >
+            اختر من القائمة
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <Select
+        value={value}
+        onValueChange={val => {
+          if (val === "أخرى") {
+            setOtherMode(prev => ({ ...prev, [key]: true }));
+            setValue(key, "");
+          } else {
+            setValue(key, val);
+          }
+        }}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder || "اختر..."} />
+        </SelectTrigger>
+        <SelectContent className="max-h-56 overflow-y-auto">
+          {validOptions.map((opt, idx) => (
+            <SelectItem key={`${opt}-${idx}`} value={opt}>{opt}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
   function renderField(field: FormFieldConfig) {
     const key = field.fieldKey;
     const value = values[key] || "";
     const placeholder = field.placeholder || "";
-    const isOther = otherMode[key] || false;
 
     if (field.fieldType === "textarea") {
       return (
@@ -170,56 +264,32 @@ export default function Register() {
       );
     }
 
-    const isUniversityField = UNIVERSITY_KEYS.includes(key);
-    const options = isUniversityField
-      ? [...universities.map(u => u.name), "أخرى"]
-      : field.fieldType === "select_with_other"
-        ? [...parseOptions(field.options), "أخرى"]
-        : parseOptions(field.options);
+    const isUniversityField = UNIVERSITY_KEYS.includes(key) || field.fieldType === "university_select";
 
-    if ((field.fieldType === "select" || field.fieldType === "select_with_other" || isUniversityField) && options.length > 0) {
-      if (isOther) {
-        return (
-          <div className="flex gap-2">
-            <Input
-              placeholder="اكتب الإجابة"
-              value={value}
-              onChange={e => setValue(key, e.target.value)}
-              autoFocus
-              required={field.required}
-            />
-            <button
-              type="button"
-              onClick={() => { setOtherMode(prev => ({ ...prev, [key]: false })); setValue(key, ""); }}
-              className="text-xs text-gray-400 hover:text-primary whitespace-nowrap px-2"
-            >
-              اختر من القائمة
-            </button>
-          </div>
-        );
+    if (isUniversityField) {
+      const uniNames = universities.map(u => u.name).filter(n => n && n.trim() !== "");
+      return renderSelectWithOptions(key, value, placeholder || "اختر الجامعة...", uniNames, field.required, true);
+    }
+
+    if (field.fieldType === "specialization_select") {
+      const linkedUniversityKey = parseOptions(field.options)[0] || "";
+      const selectedUniversityName = linkedUniversityKey ? (values[linkedUniversityKey] || "") : "";
+      let specOptions: string[] = [];
+      if (selectedUniversityName) {
+        const uni = universities.find(u => u.name === selectedUniversityName);
+        specOptions = uni ? uni.specializations.filter(s => s.enabled).map(s => s.name).filter(n => n && n.trim() !== "") : [];
+      } else {
+        specOptions = universities.flatMap(u => u.specializations.filter(s => s.enabled).map(s => s.name)).filter(n => n && n.trim() !== "");
       }
-      return (
-        <Select
-          value={value}
-          onValueChange={val => {
-            if (val === "أخرى") {
-              setOtherMode(prev => ({ ...prev, [key]: true }));
-              setValue(key, "");
-            } else {
-              setValue(key, val);
-            }
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={placeholder || "اختر..."} />
-          </SelectTrigger>
-          <SelectContent className="max-h-56 overflow-y-auto">
-            {options.map(opt => (
-              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      );
+      const linkedLabel = linkedUniversityKey && !values[linkedUniversityKey]
+        ? placeholder || "اختر الجامعة أولاً..."
+        : placeholder || "اختر التخصص...";
+      return renderSelectWithOptions(key, value, linkedLabel, specOptions, field.required, false);
+    }
+
+    if (field.fieldType === "select" || field.fieldType === "select_with_other") {
+      const opts = parseOptions(field.options);
+      return renderSelectWithOptions(key, value, placeholder, opts, field.required, field.fieldType === "select_with_other");
     }
 
     return (
@@ -234,6 +304,13 @@ export default function Register() {
       />
     );
   }
+
+  const isWideField = (field: FormFieldConfig) =>
+    field.fieldType === "textarea" ||
+    field.fieldType === "image" ||
+    field.fieldType === "university_select" ||
+    field.fieldType === "specialization_select" ||
+    UNIVERSITY_KEYS.includes(field.fieldKey);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 py-16">
@@ -260,19 +337,17 @@ export default function Register() {
             ) : (
               <form onSubmit={onSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
-                  {fields.map(field => {
-                    const isWide = field.fieldType === "textarea" || field.fieldType === "image" ||
-                      UNIVERSITY_KEYS.includes(field.fieldKey);
-                    return (
-                      <div key={field.id} className={isWide ? "md:col-span-2" : ""}>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          {field.label}
-                          {field.required && <span className="text-red-500 mr-1">*</span>}
-                        </label>
+                  {fields.map(field => (
+                    <div key={field.id} className={isWideField(field) ? "md:col-span-2" : ""}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {field.label}
+                        {field.required && <span className="text-red-500 mr-1">*</span>}
+                      </label>
+                      <FieldErrorBoundary label={field.label}>
                         {renderField(field)}
-                      </div>
-                    );
-                  })}
+                      </FieldErrorBoundary>
+                    </div>
+                  ))}
                 </div>
 
                 <Button
