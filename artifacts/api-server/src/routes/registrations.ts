@@ -44,7 +44,14 @@ import { Router, type IRouter } from "express";
   });
 
   router.post("/registrations", async (req, res): Promise<void> => {
-    const parsed = CreateRegistrationBody.safeParse(req.body);
+    // Apply defaults for fields that may not be present in the dynamic form config
+    const body = {
+      email: "",
+      programType: "منح دراسية",
+      ...req.body,
+    };
+
+    const parsed = CreateRegistrationBody.safeParse(body);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
