@@ -18,6 +18,13 @@ import { Router, type IRouter } from "express";
     "specializationChoice1", "specializationChoice2", "specializationChoice3",
   ]);
 
+  // Fields that are nullable in the DB — empty strings should become NULL
+  const NULLABLE_FIELDS = new Set([
+    "gpa", "department", "message", "certificateImageUrl",
+    "universityChoice1", "universityChoice2", "universityChoice3",
+    "specializationChoice1", "specializationChoice2", "specializationChoice3",
+  ]);
+
   router.get("/registrations", async (req, res): Promise<void> => {
     const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
     const pageNum = parseInt(page, 10) || 1;
@@ -64,9 +71,12 @@ import { Router, type IRouter } from "express";
       }
     }
 
-    // Sanitize: convert empty strings to undefined so DB receives NULL instead
+    // For nullable fields only: convert empty strings to undefined so DB stores NULL
     const sanitized = Object.fromEntries(
-      Object.entries(parsed.data).map(([k, v]) => [k, typeof v === "string" && v.trim() === "" ? undefined : v])
+      Object.entries(parsed.data).map(([k, v]) => [
+        k,
+        NULLABLE_FIELDS.has(k) && typeof v === "string" && v.trim() === "" ? undefined : v,
+      ])
     );
 
     const insertValues = {
