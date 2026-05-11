@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useGetContactInfo } from "@workspace/api-client-react";
 
 export default function Contact() {
+  useEffect(() => { document.title = "تواصل معنا | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { toast } = useToast();
   const { data: contact } = useGetContactInfo();
 
