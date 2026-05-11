@@ -588,6 +588,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {newsList?.items?.length ? newsList.items.map((news, i) => (
+              <Link href="/media/news">
               <motion.article key={news.id}
                 initial={{ opacity: 0, y: 25 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -595,12 +596,13 @@ export default function Home() {
                 transition={{ delay: i * 0.12 }}
                 className={`group bg-white rounded-3xl overflow-hidden border border-gray-100 hover:shadow-xl hover:shadow-black/[0.07] transition-all duration-300 ${i === 0 ? "md:row-span-2 flex flex-col" : ""}`}
               >
-                <div className={`overflow-hidden bg-gray-100 ${i === 0 ? "h-64 md:h-72 flex-shrink-0" : "h-52"}`}>
+                <div className="bg-gray-50 flex items-center justify-center overflow-hidden" style={{ minHeight: 180, maxHeight: i === 0 ? 288 : 220 }}>
                   <img
                     src={news.imageUrl || "https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&q=80&w=800"}
                     alt={news.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-600"
+                    className="w-full object-contain group-hover:scale-105 transition-transform duration-600"
                     onError={e => { e.currentTarget.src = "https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?auto=format&fit=crop&q=80&w=800"; }}
+                    style={{ maxHeight: i === 0 ? 288 : 220 }}
                   />
                 </div>
                 <div className={`p-6 ${i === 0 ? "flex-1 flex flex-col" : ""}`}>
@@ -610,11 +612,12 @@ export default function Home() {
                   </div>
                   <h3 className={`font-bold text-gray-900 mb-2 ${i === 0 ? "text-xl" : "text-base"} line-clamp-2`}>{news.title}</h3>
                   <p className="text-gray-500 text-sm line-clamp-3 mb-4 leading-relaxed">{news.excerpt}</p>
-                  <span className="text-[#C41E24] text-sm font-bold group-hover:gap-2 flex items-center gap-1 transition-all mt-auto cursor-pointer">
+                  <span className="text-[#C41E24] text-sm font-bold flex items-center gap-1 transition-all mt-auto cursor-pointer hover:underline">
                     اقرأ المزيد <ArrowLeft size={14} />
                   </span>
                 </div>
               </motion.article>
+              </Link>
             )) : (
               /* Placeholder cards */
               [0,1,2].map(i => (
