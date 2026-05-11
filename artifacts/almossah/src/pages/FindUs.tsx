@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { MapPin, Navigation, Compass } from "lucide-react";
 import { useGetContactInfo } from "@workspace/api-client-react";
 
 export default function FindUs() {
+  useEffect(() => { document.title = "موقعنا | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { data: contact } = useGetContactInfo();
 
   return (
