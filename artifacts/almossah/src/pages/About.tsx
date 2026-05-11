@@ -1,9 +1,12 @@
+import { useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "wouter";
 import { useListTeam } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 
 export default function About() {
+  useEffect(() => { document.title = "عن المؤسسة | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { data: teamList } = useListTeam();
 
   return (
