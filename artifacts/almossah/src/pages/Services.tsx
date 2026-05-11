@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
@@ -6,6 +7,8 @@ import {
 } from "lucide-react";
 
 export default function Services() {
+  useEffect(() => { document.title = "خدماتنا | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F5F0]" dir="rtl">
