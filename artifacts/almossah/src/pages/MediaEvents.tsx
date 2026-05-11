@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { useListNews } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 
 export default function MediaEvents() {
+  useEffect(() => { document.title = "الفعاليات | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { data: eventsList } = useListNews({ type: 'event' });
 
   return (
