@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
 export default function Programs() {
+  useEffect(() => { document.title = "برامجنا | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const programs = [
     {
       id: "scholarships",
