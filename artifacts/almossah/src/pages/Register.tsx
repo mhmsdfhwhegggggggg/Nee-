@@ -201,6 +201,8 @@ function SpecializationSelect({ specs, value, placeholder, gpa, department, onCh
 }
 
 export default function Register() {
+  useEffect(() => { document.title = "التسجيل | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { toast } = useToast();
   const createRegistration = useCreateRegistration();
 
