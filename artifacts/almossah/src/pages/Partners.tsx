@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useListPartners, useListSlides } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Play, ExternalLink } from "lucide-react";
 
 export default function Partners() {
+  useEffect(() => { document.title = "شركاء النجاح | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { data: partnersList } = useListPartners();
   const { data: slides } = useListSlides();
   const [filter, setFilter] = useState<string>("all");
