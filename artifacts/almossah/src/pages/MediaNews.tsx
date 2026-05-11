@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { useListNews } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
 export default function MediaNews() {
+  useEffect(() => { document.title = "الأخبار والمستجدات | المؤسسة الوطنية للتنمية الشاملة"; }, []);
+
   const { data: newsList } = useListNews({ type: 'news' });
 
   return (
