@@ -91,24 +91,24 @@ router.post("/admin/login", async (req, res): Promise<void> => {
     return;
   }
 
-  // Get password hash from DB
-  let storedHash = await getAdminPasswordHash();
+  const envPassword = process.env.ADMIN_PASSWORD ?? "admin123";
+  const providedHash = hashPassword(password);
+  const envHash = hashPassword(envPassword);
 
-  // If no DB record, fall back to env var check and create DB record
-  if (!storedHash) {
-    const envPassword = process.env.ADMIN_PASSWORD ?? "admin123";
-    if (password !== envPassword) {
-      res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
-      return;
-    }
-    // Store the hash in DB for future use
-    storedHash = hashPassword(envPassword);
-    await setAdminPasswordHash(storedHash);
-  } else {
-    if (hashPassword(password) !== storedHash) {
-      res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
-      return;
-    }
+  // Get password hash from DB
+  const storedHash = await getAdminPasswordHash();
+
+  const matchesDb = storedHash && providedHash === storedHash;
+  const matchesEnv = providedHash === envHash;
+
+  if (!matchesDb && !matchesEnv) {
+    res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
+    return;
+  }
+
+  // If env var matched but DB is out of sync, fix the DB hash
+  if (!matchesDb && matchesEnv) {
+    await setAdminPasswordHash(envHash);
   }
 
   // Set session (may not work in serverless but kept for compatibility)
