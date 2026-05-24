@@ -11,6 +11,7 @@ import { Layout } from "@/components/layout/Layout";
   import Contact from "./Contact";
   import FindUs from "./FindUs";
   import NotFound from "./not-found";
+  import NassirPage from "./Nassir";
 
   import AdminLogin from "./admin/Login";
   import Dashboard from "./admin/Dashboard";
@@ -43,6 +44,7 @@ import { Layout } from "@/components/layout/Layout";
         <Route path="/admin/training-form" component={TrainingFormBuilder} />
         <Route path="/admin/register-form-config" component={RegisterFormConfig} />
         <Route path="/admin/nassir" component={NassirAdmin} />
+        <Route path="/nassir" component={NassirPage} />
 
         <Route path="/.*">
           <Layout>
