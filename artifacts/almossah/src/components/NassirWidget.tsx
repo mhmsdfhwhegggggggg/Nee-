@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
   import { X, Send, Bot, Loader2, ChevronDown } from "lucide-react";
+  import { Link } from "wouter";
 
   const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
 
@@ -21,7 +22,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
     return (
       <div className="flex gap-1 items-center px-1 py-2">
         {[0, 150, 300].map((d) => (
-          <span key={d} className="w-2 h-2 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+          <span key={d} className="w-2 h-2 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: d + "ms" }} />
         ))}
       </div>
     );
@@ -38,26 +39,21 @@ import { useState, useRef, useEffect, useCallback } from "react";
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const msgIdRef = useRef(0);
-
     const nextId = () => String(++msgIdRef.current);
 
     const scrollToBottom = useCallback(() => {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-      }, 50);
+      setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 50);
     }, []);
 
-    useEffect(() => {
-      if (msgs.length) scrollToBottom();
-    }, [msgs, scrollToBottom]);
+    useEffect(() => { if (msgs.length) scrollToBottom(); }, [msgs, scrollToBottom]);
 
     const initChat = useCallback(async () => {
       if (initialized) return;
       setInitialized(true);
       try {
         const [settingsRes, convoRes] = await Promise.all([
-          fetch(`${BASE}/api/nassir/settings`),
-          fetch(`${BASE}/api/nassir/conversations`, {
+          fetch(BASE + "/api/nassir/settings"),
+          fetch(BASE + "/api/nassir/conversations", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ platform: "web" }),
@@ -66,10 +62,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
         const settings = settingsRes.ok ? await settingsRes.json() : null;
         const convo = convoRes.ok ? await convoRes.json() : null;
         if (convo?.id) setConvId(convo.id);
-        const welcome = settings?.welcomeMessage || "مرحباً! أنا ناصر، مساعدك الذكي 👋\nكيف يمكنني مساعدتك اليوم؟";
+        const welcome = settings?.welcomeMessage || "مرحباً! أنا ناصر مساعدك الذكي 👋\nكيف يمكنني مساعدتك اليوم؟";
         setMsgs([{ id: nextId(), role: "assistant", content: welcome }]);
       } catch {
-        setMsgs([{ id: nextId(), role: "assistant", content: "مرحباً! كيف يمكنني مساعدتك اليوم؟" }]);
+        setMsgs([{ id: nextId(), role: "assistant", content: "مرحباً! أنا ناصر مساعدك الذكي 👋" }]);
       }
     }, [initialized]);
 
@@ -86,23 +82,20 @@ import { useState, useRef, useEffect, useCallback } from "react";
       setShowQuick(false);
       setMsgs((prev) => [...prev, { id: nextId(), role: "user", content: trimmed }]);
       setIsTyping(true);
-
       const assistantId = nextId();
       setMsgs((prev) => [...prev, { id: assistantId, role: "assistant", content: "", streaming: true }]);
 
       try {
-        const res = await fetch(`${BASE}/api/nassir/conversations/${convId}/messages`, {
+        const res = await fetch(BASE + "/api/nassir/conversations/" + convId + "/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: trimmed }),
         });
-
         if (!res.body) throw new Error("No body");
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -115,52 +108,37 @@ import { useState, useRef, useEffect, useCallback } from "react";
               const parsed = JSON.parse(line.slice(5).trim());
               if (parsed.content) {
                 fullText += parsed.content;
-                setMsgs((prev) =>
-                  prev.map((m) => m.id === assistantId ? { ...m, content: fullText, streaming: true } : m)
-                );
+                setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText, streaming: true } : m));
               }
-              if (parsed.done) {
-                setMsgs((prev) =>
-                  prev.map((m) => m.id === assistantId ? { ...m, streaming: false } : m)
-                );
-              }
+              if (parsed.done) setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, streaming: false } : m));
             } catch {}
           }
         }
       } catch {
-        setMsgs((prev) =>
-          prev.map((m) => m.id === assistantId ? { ...m, content: "عذراً، حدث خطأ. حاول مرة أخرى.", streaming: false } : m)
-        );
+        setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "عذراً، حدث خطأ. حاول مرة أخرى.", streaming: false } : m));
       } finally {
         setIsTyping(false);
       }
     }, [convId, isTyping]);
 
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      sendMessage(input);
-    };
-
     function renderContent(content: string) {
-      return content.split("\n").map((line, i) => (
-        <span key={i}>{line}{i < content.split("\n").length - 1 && <br />}</span>
-      ));
+      return content.split("\n").map((line, i) => <span key={i}>{line}{i < content.split("\n").length - 1 && <br />}</span>);
     }
 
     return (
       <>
         {/* Floating button */}
-        <div className="fixed bottom-6 left-6 z-50 flex flex-col items-center gap-2">
+        <div className="fixed bottom-6 left-6 z-50 flex flex-col items-end gap-2">
           {!open && (
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
               <button
                 onClick={handleOpen}
-                aria-label="افتح ناصر المساعد الذكي"
+                aria-label="افتح ناصر مساعدك الذكي"
                 className="relative flex items-center gap-2 bg-primary hover:bg-primary/90 text-white rounded-full px-4 py-3 shadow-xl transition-all hover:scale-105 active:scale-95 font-medium text-sm"
               >
                 <Bot size={20} />
-                <span>ناصر</span>
+                <span>ناصر مساعدك الذكي</span>
               </button>
             </div>
           )}
@@ -179,49 +157,50 @@ import { useState, useRef, useEffect, useCallback } from "react";
         {open && (
           <div
             dir="rtl"
-            className="fixed bottom-20 left-4 z-50 w-[340px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
-            style={{ height: "480px" }}
+            className="fixed bottom-20 left-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+            style={{ height: "520px" }}
           >
             {/* Header */}
             <div className="bg-primary px-4 py-3 flex items-center gap-3 shrink-0">
-              <div className="flex-1">
-                <p className="text-white font-bold text-sm">ناصر — المساعد الذكي</p>
-                <p className="text-white/70 text-xs">المؤسسة الوطنية للتنمية الشاملة</p>
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Bot size={20} className="text-white" />
               </div>
-              <div className="w-2 h-2 rounded-full bg-green-300 animate-pulse" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-bold text-sm">ناصر مساعدك الذكي</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
+                  <p className="text-white/70 text-xs">متاح الآن</p>
+                </div>
+              </div>
+              <Link href="/nassir">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="text-white/70 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg transition-colors shrink-0"
+                >
+                  صفحة كاملة ↗
+                </button>
+              </Link>
               <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-              {msgs.length === 0 && (
-                <div className="flex justify-center items-center h-full">
-                  <Loader2 className="animate-spin text-gray-300" size={24} />
-                </div>
-              )}
+              {msgs.length === 0 && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-gray-300" size={24} /></div>}
               {msgs.map((msg) => (
-                <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                <div key={msg.id} className={"flex gap-2 " + (msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
                   {msg.role === "assistant" && (
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                       <Bot size={16} className="text-primary" />
                     </div>
                   )}
-                  <div
-                    className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm
-                      ${msg.role === "user"
-                        ? "bg-primary text-white rounded-tr-sm"
-                        : "bg-white text-gray-800 rounded-tl-sm border border-gray-100"
-                      }`}
-                  >
+                  <div className={"max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm " +
+                    (msg.role === "user" ? "bg-primary text-white rounded-tr-sm" : "bg-white text-gray-800 rounded-tl-sm border border-gray-100")}>
                     {msg.role === "assistant" && msg.streaming && !msg.content
                       ? <TypingDots />
-                      : renderContent(msg.content)
-                    }
-                    {msg.streaming && msg.content && (
-                      <span className="inline-block w-0.5 h-3.5 bg-gray-400 animate-pulse ml-0.5 align-middle" />
-                    )}
+                      : renderContent(msg.content)}
+                    {msg.streaming && msg.content && <span className="inline-block w-0.5 h-3.5 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
                   </div>
                 </div>
               ))}
@@ -231,11 +210,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
             {showQuick && msgs.length <= 1 && !isTyping && (
               <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-gray-50 border-t border-gray-100 shrink-0">
                 {QUICK_REPLIES.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => sendMessage(q)}
-                    className="text-xs bg-white border border-primary/30 text-primary hover:bg-primary hover:text-white px-2.5 py-1 rounded-full transition-colors whitespace-nowrap"
-                  >
+                  <button key={q} onClick={() => sendMessage(q)}
+                    className="text-xs bg-white border border-primary/30 text-primary hover:bg-primary hover:text-white px-2.5 py-1 rounded-full transition-colors whitespace-nowrap">
                     {q}
                   </button>
                 ))}
@@ -243,12 +219,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
             )}
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="flex gap-2 p-3 border-t border-gray-100 bg-white shrink-0">
-              <button
-                type="submit"
-                disabled={!input.trim() || isTyping || !convId}
-                className="w-9 h-9 rounded-xl bg-primary hover:bg-primary/90 text-white flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
+            <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2 p-3 border-t border-gray-100 bg-white shrink-0">
+              <button type="submit" disabled={!input.trim() || isTyping || !convId}
+                className="w-9 h-9 rounded-xl bg-primary hover:bg-primary/90 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all">
                 <Send size={16} />
               </button>
               <input
