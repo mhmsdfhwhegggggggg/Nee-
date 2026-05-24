@@ -19,8 +19,8 @@ import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/
 
   export const chatBotSettings = pgTable("chat_bot_settings", {
     id: serial("id").primaryKey(),
-    systemPrompt: text("system_prompt").notNull().default("أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة. تحدث دائماً باللغة العربية وكن مفيداً وودوداً ومختصراً. ساعد المستخدمين في الاستفسار عن برامج المنح الدراسية والخدمات والتسجيل."),
-    welcomeMessage: text("welcome_message").notNull().default("مرحباً! أنا ناصر، مساعدك الذكي 👋\nكيف يمكنني مساعدتك اليوم؟"),
+    systemPrompt: text("system_prompt").notNull().default("أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة."),
+    welcomeMessage: text("welcome_message").notNull().default("مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟"),
     isActive: boolean("is_active").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   });
