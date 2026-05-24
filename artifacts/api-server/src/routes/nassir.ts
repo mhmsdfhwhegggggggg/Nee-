@@ -2,11 +2,10 @@ import { Router, type IRouter } from "express";
   import { db, chatConversations, chatMessages, chatBotSettings } from "@workspace/db";
   import { eq, desc } from "drizzle-orm";
   import { randomUUID } from "crypto";
-  import { ensureSettings, grok, GROK_MODEL } from "../lib/chatHelper";
+  import { ensureSettings, groq, GROQ_MODEL } from "../lib/chatHelper";
 
   const router: IRouter = Router();
 
-  // ── Settings ──────────────────────────────────────────────
   router.get("/nassir/settings", async (_req, res): Promise<void> => {
     const settings = await ensureSettings();
     res.json(settings);
@@ -23,22 +22,14 @@ import { Router, type IRouter } from "express";
     res.json(updated);
   });
 
-  // ── Conversations ─────────────────────────────────────────
   router.post("/nassir/conversations", async (req, res): Promise<void> => {
     const platform = req.body?.platform || "web";
-    const [convo] = await db
-      .insert(chatConversations)
-      .values({ sessionId: randomUUID(), platform })
-      .returning();
+    const [convo] = await db.insert(chatConversations).values({ sessionId: randomUUID(), platform }).returning();
     res.status(201).json(convo);
   });
 
   router.get("/admin/nassir/conversations", async (_req, res): Promise<void> => {
-    const convos = await db
-      .select()
-      .from(chatConversations)
-      .orderBy(desc(chatConversations.updatedAt))
-      .limit(100);
+    const convos = await db.select().from(chatConversations).orderBy(desc(chatConversations.updatedAt)).limit(100);
     res.json(convos);
   });
 
@@ -46,11 +37,7 @@ import { Router, type IRouter } from "express";
     const id = parseInt(req.params.id, 10);
     const [convo] = await db.select().from(chatConversations).where(eq(chatConversations.id, id));
     if (!convo) { res.status(404).json({ error: "Not found" }); return; }
-    const msgs = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, id))
-      .orderBy(chatMessages.createdAt);
+    const msgs = await db.select().from(chatMessages).where(eq(chatMessages.conversationId, id)).orderBy(chatMessages.createdAt);
     res.json({ ...convo, messages: msgs });
   });
 
@@ -60,7 +47,6 @@ import { Router, type IRouter } from "express";
     res.sendStatus(204);
   });
 
-  // ── Messages (SSE streaming) ──────────────────────────────
   router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void> => {
     const id = parseInt(req.params.id, 10);
     const { content } = req.body;
@@ -88,11 +74,7 @@ import { Router, type IRouter } from "express";
 
     await db.insert(chatMessages).values({ conversationId: id, role: "user", content });
 
-    const history = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, id))
-      .orderBy(chatMessages.createdAt);
+    const history = await db.select().from(chatMessages).where(eq(chatMessages.conversationId, id)).orderBy(chatMessages.createdAt);
 
     const msgs: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: settings.systemPrompt },
@@ -101,13 +83,7 @@ import { Router, type IRouter } from "express";
 
     let fullResponse = "";
     try {
-      const stream = await grok.chat.completions.create({
-        model: GROK_MODEL,
-        max_tokens: 1024,
-        messages: msgs,
-        stream: true,
-      });
-
+      const stream = await groq.chat.completions.create({ model: GROQ_MODEL, max_tokens: 1024, messages: msgs, stream: true });
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
@@ -117,7 +93,6 @@ import { Router, type IRouter } from "express";
 `);
         }
       }
-
       await db.insert(chatMessages).values({ conversationId: id, role: "assistant", content: fullResponse });
       await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, id));
     } catch (e: unknown) {
