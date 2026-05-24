@@ -1,11 +1,2 @@
-export * from "./registrations";
-  export * from "./news";
-  export * from "./partners";
-  export * from "./team";
-  export * from "./stats";
-  export * from "./slides";
-  export * from "./contact-info";
-  export * from "./registration-form-config";
-  export * from "./universities";
-  export * from "./chat";
+export * from "./chat";
   
