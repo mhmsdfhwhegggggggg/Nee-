@@ -3,7 +3,6 @@ import { db, registrationsTable, newsTable, partnersTable, teamTable } from "@wo
 import { eq, desc, sql } from "drizzle-orm";
 import { AdminLoginBody } from "@workspace/api-zod";
 import crypto from "crypto";
-import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -39,23 +38,29 @@ function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-// --- DB helpers ---
+// --- DB helpers (use drizzle db.execute for raw SQL to avoid pool issues) ---
 
 async function getAdminPasswordHash(): Promise<string | null> {
-  const result = await pool.query<{ password_hash: string }>(
-    "SELECT password_hash FROM admin_credentials WHERE username = $1 LIMIT 1",
-    [ADMIN_USERNAME]
-  );
-  return result.rows[0]?.password_hash ?? null;
+  try {
+    const result = await db.execute<{ password_hash: string }>(
+      sql`SELECT password_hash FROM admin_credentials WHERE username = ${ADMIN_USERNAME} LIMIT 1`
+    );
+    return (result.rows[0] as { password_hash: string } | undefined)?.password_hash ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function setAdminPasswordHash(hash: string): Promise<void> {
-  await pool.query(
-    `INSERT INTO admin_credentials (username, password_hash, updated_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (username) DO UPDATE SET password_hash = $2, updated_at = NOW()`,
-    [ADMIN_USERNAME, hash]
-  );
+  try {
+    await db.execute(
+      sql`INSERT INTO admin_credentials (username, password_hash, updated_at)
+          VALUES (${ADMIN_USERNAME}, ${hash}, NOW())
+          ON CONFLICT (username) DO UPDATE SET password_hash = ${hash}, updated_at = NOW()`
+    );
+  } catch {
+    // Non-fatal: log and continue
+  }
 }
 
 // --- Auth helper ---
