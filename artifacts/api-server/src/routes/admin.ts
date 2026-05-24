@@ -1,19 +1,18 @@
 import { Router, type IRouter } from "express";
 import { db, registrationsTable, newsTable, partnersTable, teamTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { AdminLoginBody } from "@workspace/api-zod";
 import crypto from "crypto";
 
 const router: IRouter = Router();
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "admin";
 const JWT_SECRET = process.env.SESSION_SECRET ?? "almossah-national-secret-2024";
-const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-// --- Stateless token helpers (HMAC-signed, no server-side storage) ---
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function createToken(username: string): string {
-  const payload = Buffer.from(JSON.stringify({ username, iat: Date.now(), exp: Date.now() + TOKEN_EXPIRY_MS })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({ username, iat: Date.now(), exp: Date.now() + TOKEN_EXPIRY_MS })
+  ).toString("base64url");
   const sig = crypto.createHmac("sha256", JWT_SECRET).update(payload).digest("base64url");
   return `${payload}.${sig}`;
 }
@@ -26,8 +25,9 @@ function verifyToken(token: string): { username: string } | null {
     const sig = token.slice(dot + 1);
     const expectedSig = crypto.createHmac("sha256", JWT_SECRET).update(payload).digest("base64url");
     if (sig !== expectedSig) return null;
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString());
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString()) as { exp?: number; username?: string };
     if (!data.exp || data.exp < Date.now()) return null;
+    if (!data.username) return null;
     return { username: data.username };
   } catch {
     return null;
@@ -38,14 +38,13 @@ function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-// --- DB helpers (use drizzle db.execute for raw SQL to avoid pool issues) ---
-
 async function getAdminPasswordHash(): Promise<string | null> {
   try {
-    const result = await db.execute<{ password_hash: string }>(
+    const result = await db.execute(
       sql`SELECT password_hash FROM admin_credentials WHERE username = ${ADMIN_USERNAME} LIMIT 1`
     );
-    return (result.rows[0] as { password_hash: string } | undefined)?.password_hash ?? null;
+    const row = result.rows[0] as { password_hash?: string } | undefined;
+    return row?.password_hash ?? null;
   } catch {
     return null;
   }
@@ -59,92 +58,103 @@ async function setAdminPasswordHash(hash: string): Promise<void> {
           ON CONFLICT (username) DO UPDATE SET password_hash = ${hash}, updated_at = NOW()`
     );
   } catch {
-    // Non-fatal: log and continue
+    // non-fatal
   }
 }
 
-// --- Auth helper ---
-
 function isAuthenticated(req: import("express").Request): string | null {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    const verified = verifyToken(token);
-    if (verified) return verified.username;
-  }
-  // Fallback: session cookie
-  const session = req.session as Record<string, unknown>;
-  if (session.isAdmin && session.username) {
-    return session.username as string;
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const verified = verifyToken(token);
+      if (verified) return verified.username;
+    }
+    const session = req.session as Record<string, unknown> | undefined;
+    if (session?.isAdmin && session?.username) {
+      return session.username as string;
+    }
+  } catch {
+    // session may not be available in serverless
   }
   return null;
 }
 
-// --- Routes ---
+// ─── POST /api/admin/login ─────────────────────────────────────────────────
 
 router.post("/admin/login", async (req, res): Promise<void> => {
-  const parsed = AdminLoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  try {
+    const body = req.body as Record<string, unknown>;
+    const username = typeof body?.username === "string" ? body.username.trim() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
 
-  const { username, password } = parsed.data;
+    if (!username || !password) {
+      res.status(400).json({ success: false, message: "يرجى إدخال اسم المستخدم وكلمة المرور" });
+      return;
+    }
 
-  if (username !== ADMIN_USERNAME) {
-    res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
-    return;
-  }
-
-  // Get password hash from DB
-  let storedHash = await getAdminPasswordHash();
-
-  const envPassword = process.env.ADMIN_PASSWORD ?? "admin123";
-  const providedHash = hashPassword(password);
-
-  // If no DB record — store hash from env var and proceed
-  if (!storedHash) {
-    if (password !== envPassword) {
+    if (username !== ADMIN_USERNAME) {
       res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
       return;
     }
-    storedHash = hashPassword(envPassword);
-    await setAdminPasswordHash(storedHash);
-  } else {
-    // Check DB hash first; fall back to env var if DB hash is stale/wrong
-    const matchesDb = providedHash === storedHash;
+
+    const envPassword = process.env.ADMIN_PASSWORD ?? "admin123";
+    const providedHash = hashPassword(password);
+    const storedHash = await getAdminPasswordHash();
+
+    const matchesDb = storedHash ? providedHash === storedHash : false;
     const matchesEnv = password === envPassword;
+
     if (!matchesDb && !matchesEnv) {
       res.status(401).json({ success: false, message: "بيانات الدخول غير صحيحة" });
       return;
     }
-    // If env var matched but DB hash was stale, self-heal the DB
+
+    // Self-heal DB hash if stale
     if (!matchesDb && matchesEnv) {
-      storedHash = hashPassword(envPassword);
-      await setAdminPasswordHash(storedHash);
+      await setAdminPasswordHash(hashPassword(envPassword));
     }
+
+    // Set session if available
+    try {
+      const session = req.session as Record<string, unknown> | undefined;
+      if (session) {
+        session.isAdmin = true;
+        session.username = username;
+      }
+    } catch {
+      // non-fatal in serverless
+    }
+
+    const token = createToken(username);
+    res.json({ success: true, message: "تم تسجيل الدخول بنجاح", token });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "خطأ في الخادم", detail: String(err) });
   }
-
-  // Set session (may not work in serverless but kept for compatibility)
-  (req.session as Record<string, unknown>).isAdmin = true;
-  (req.session as Record<string, unknown>).username = username;
-
-  // Generate stateless signed token
-  const token = createToken(username);
-  res.json({ success: true, message: "تم تسجيل الدخول بنجاح", token });
 });
+
+// ─── POST /api/admin/logout ───────────────────────────────────────────────
 
 router.post("/admin/logout", async (req, res): Promise<void> => {
-  req.session.destroy(() => {});
+  try {
+    req.session.destroy(() => {});
+  } catch {
+    // non-fatal
+  }
   res.json({ success: true, message: "تم تسجيل الخروج" });
 });
+
+// ─── POST /api/admin/change-password ──────────────────────────────────────
 
 router.post("/admin/change-password", async (req, res): Promise<void> => {
   if (!isAuthenticated(req)) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  const { currentPassword, newPassword } = req.body;
+  const body = req.body as Record<string, unknown>;
+  const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : "";
+  const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
+
   if (!currentPassword || !newPassword) {
     res.status(400).json({ success: false, message: "يرجى إدخال كلمة المرور الحالية والجديدة" });
     return;
@@ -156,10 +166,8 @@ router.post("/admin/change-password", async (req, res): Promise<void> => {
 
   const storedHash = await getAdminPasswordHash();
   const currentHash = hashPassword(currentPassword);
-
-  // Check against DB or env var fallback
   const envHash = hashPassword(process.env.ADMIN_PASSWORD ?? "admin123");
-  const isValid = storedHash ? (currentHash === storedHash) : (currentHash === envHash);
+  const isValid = storedHash ? currentHash === storedHash : currentHash === envHash;
 
   if (!isValid) {
     res.status(401).json({ success: false, message: "كلمة المرور الحالية غير صحيحة" });
@@ -170,6 +178,8 @@ router.post("/admin/change-password", async (req, res): Promise<void> => {
   res.json({ success: true, message: "تم تغيير كلمة المرور بنجاح" });
 });
 
+// ─── GET /api/admin/me ────────────────────────────────────────────────────
+
 router.get("/admin/me", async (req, res): Promise<void> => {
   const username = isAuthenticated(req);
   if (!username) {
@@ -178,6 +188,8 @@ router.get("/admin/me", async (req, res): Promise<void> => {
   }
   res.json({ username, isAdmin: true });
 });
+
+// ─── GET /api/admin/dashboard ─────────────────────────────────────────────
 
 router.get("/admin/dashboard", async (req, res): Promise<void> => {
   if (!isAuthenticated(req)) {
