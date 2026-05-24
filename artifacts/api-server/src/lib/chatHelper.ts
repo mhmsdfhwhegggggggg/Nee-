@@ -3,7 +3,13 @@ import OpenAI from "openai";
   import { eq } from "drizzle-orm";
   import { randomUUID } from "crypto";
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // Grok via xAI — OpenAI-compatible API
+  const grok = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+  });
+
+  const GROK_MODEL = "grok-3-mini";
 
   export async function getOrCreateConversation(platform: string, userIdentifier: string) {
     const existing = await db
@@ -38,9 +44,9 @@ import OpenAI from "openai";
       ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     ];
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 1024,
+    const response = await grok.chat.completions.create({
+      model: GROK_MODEL,
+      max_tokens: 1024,
       messages: msgs,
     });
 
@@ -56,4 +62,6 @@ import OpenAI from "openai";
     const [created] = await db.insert(chatBotSettings).values({}).returning();
     return created;
   }
+
+  export { grok, GROK_MODEL };
   
