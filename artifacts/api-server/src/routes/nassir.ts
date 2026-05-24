@@ -1,12 +1,10 @@
 import { Router, type IRouter } from "express";
   import { db, chatConversations, chatMessages, chatBotSettings } from "@workspace/db";
   import { eq, desc } from "drizzle-orm";
-  import OpenAI from "openai";
   import { randomUUID } from "crypto";
-  import { ensureSettings } from "../lib/chatHelper";
+  import { ensureSettings, grok, GROK_MODEL } from "../lib/chatHelper";
 
   const router: IRouter = Router();
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   // ── Settings ──────────────────────────────────────────────
   router.get("/nassir/settings", async (_req, res): Promise<void> => {
@@ -14,7 +12,7 @@ import { Router, type IRouter } from "express";
     res.json(settings);
   });
 
-  router.patch("/api/admin/nassir/settings", async (req, res): Promise<void> => {
+  router.patch("/admin/nassir/settings", async (req, res): Promise<void> => {
     const { systemPrompt, welcomeMessage, isActive } = req.body;
     const settings = await ensureSettings();
     const update: Record<string, unknown> = {};
@@ -56,6 +54,12 @@ import { Router, type IRouter } from "express";
     res.json({ ...convo, messages: msgs });
   });
 
+  router.delete("/admin/nassir/conversations/:id", async (req, res): Promise<void> => {
+    const id = parseInt(req.params.id, 10);
+    await db.delete(chatConversations).where(eq(chatConversations.id, id));
+    res.sendStatus(204);
+  });
+
   // ── Messages (SSE streaming) ──────────────────────────────
   router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void> => {
     const id = parseInt(req.params.id, 10);
@@ -70,7 +74,6 @@ import { Router, type IRouter } from "express";
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
 
     if (!settings.isActive) {
       res.write(`data: ${JSON.stringify({ content: "عذراً، المساعد غير متاح حالياً." })}
@@ -91,16 +94,16 @@ import { Router, type IRouter } from "express";
       .where(eq(chatMessages.conversationId, id))
       .orderBy(chatMessages.createdAt);
 
-    const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    const msgs: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: settings.systemPrompt },
       ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     ];
 
     let fullResponse = "";
     try {
-      const stream = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        max_completion_tokens: 1024,
+      const stream = await grok.chat.completions.create({
+        model: GROK_MODEL,
+        max_tokens: 1024,
         messages: msgs,
         stream: true,
       });
@@ -117,8 +120,9 @@ import { Router, type IRouter } from "express";
 
       await db.insert(chatMessages).values({ conversationId: id, role: "assistant", content: fullResponse });
       await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, id));
-    } catch (e) {
-      res.write(`data: ${JSON.stringify({ content: "حدث خطأ، يرجى المحاولة مرة أخرى." })}
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "خطأ غير معروف";
+      res.write(`data: ${JSON.stringify({ content: "حدث خطأ: " + msg })}
 
 `);
     }
