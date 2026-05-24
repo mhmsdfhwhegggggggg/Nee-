@@ -3,13 +3,13 @@ import OpenAI from "openai";
   import { eq } from "drizzle-orm";
   import { randomUUID } from "crypto";
 
-  // Grok via xAI — OpenAI-compatible API
-  const grok = new OpenAI({
-    apiKey: process.env.XAI_API_KEY,
-    baseURL: "https://api.x.ai/v1",
+  // Groq — OpenAI-compatible API (ultra-fast inference)
+  const groq = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
   });
 
-  const GROK_MODEL = "grok-3-mini";
+  const GROQ_MODEL = "llama-3.3-70b-versatile";
 
   export async function getOrCreateConversation(platform: string, userIdentifier: string) {
     const existing = await db
@@ -17,9 +17,7 @@ import OpenAI from "openai";
       .from(chatConversations)
       .where(eq(chatConversations.userIdentifier, userIdentifier))
       .limit(1);
-
     if (existing.length > 0) return existing[0];
-
     const [convo] = await db
       .insert(chatConversations)
       .values({ sessionId: randomUUID(), platform, userIdentifier })
@@ -44,8 +42,8 @@ import OpenAI from "openai";
       ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     ];
 
-    const response = await grok.chat.completions.create({
-      model: GROK_MODEL,
+    const response = await groq.chat.completions.create({
+      model: GROQ_MODEL,
       max_tokens: 1024,
       messages: msgs,
     });
@@ -63,5 +61,5 @@ import OpenAI from "openai";
     return created;
   }
 
-  export { grok, GROK_MODEL };
+  export { groq, GROQ_MODEL };
   
