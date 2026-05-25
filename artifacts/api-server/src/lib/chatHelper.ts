@@ -218,7 +218,7 @@ export async function getOrCreateConversation(platform: string, userIdentifier: 
   return convo;
 }
 
-export const GROQ_FAST_MODEL = "llama-3.3-70b-versatile";
+export const GROQ_FAST_MODEL = "llama-3.1-8b-instant";
 
 /**
  * Fast path for Telegram/webhook channels.
@@ -244,7 +244,8 @@ export async function processMessageFast(conversationId: number, userContent: st
 
   const response = await groq.chat.completions.create({
     model: GROQ_FAST_MODEL,
-    max_tokens: 600,
+    max_tokens: 500,
+    temperature: 0,
     messages: msgs,
     temperature: 0.7,
   });
