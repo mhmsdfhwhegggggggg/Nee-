@@ -247,7 +247,6 @@ export async function processMessageFast(conversationId: number, userContent: st
     max_tokens: 500,
     temperature: 0,
     messages: msgs,
-    temperature: 0.7,
   });
 
   const reply = response.choices[0]?.message?.content?.trim() || "عذراً، لم أتمكن من معالجة طلبك. حاول مرة أخرى.";
@@ -349,7 +348,7 @@ export async function extractFormDataFromImage(imageBase64: string, mimeType: st
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return {};
     return JSON.parse(jsonMatch[0]) as ExtractedFormData;
-  } catch {
-    return {};
+  } catch (err) {
+    throw new Error(`Vision API error: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
