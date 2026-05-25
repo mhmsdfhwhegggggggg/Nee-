@@ -216,6 +216,48 @@ export async function getOrCreateConversation(platform: string, userIdentifier: 
   return convo;
 }
 
+export const GROQ_FAST_MODEL = "llama-3.1-8b-instant";
+
+/**
+ * Fast path for Telegram/webhook channels.
+ * Uses instant model + minimal DB ops to stay within Vercel's 10s free-tier limit.
+ * Skips ensureSettings() DB call and only loads last 6 messages of history.
+ */
+export async function processMessageFast(conversationId: number, userContent: string): Promise<string> {
+  // Insert user message
+  await db.insert(chatMessages).values({ conversationId, role: "user", content: userContent });
+
+  // Fetch only last 6 messages (avoids loading huge history)
+  const history = await db
+    .select()
+    .from(chatMessages)
+    .where(eq(chatMessages.conversationId, conversationId))
+    .orderBy(chatMessages.createdAt)
+    .limit(6);
+
+  const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: NASSIR_MASTER_PROMPT },
+    ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+  ];
+
+  const response = await groq.chat.completions.create({
+    model: GROQ_FAST_MODEL,
+    max_tokens: 600,
+    messages: msgs,
+    temperature: 0.7,
+  });
+
+  const reply = response.choices[0]?.message?.content?.trim() || "عذراً، لم أتمكن من معالجة طلبك. حاول مرة أخرى.";
+
+  // Save reply and update conversation in parallel
+  await Promise.all([
+    db.insert(chatMessages).values({ conversationId, role: "assistant", content: reply }),
+    db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, conversationId)),
+  ]);
+
+  return reply;
+}
+
 export async function processMessage(conversationId: number, userContent: string): Promise<string> {
   const settings = await ensureSettings();
   if (!settings.isActive) return "عذراً، المساعد غير متاح حالياً. يرجى المحاولة لاحقاً.";
