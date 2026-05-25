@@ -214,14 +214,14 @@ export default function NassirPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/60 via-white to-slate-50" dir="rtl">
       <div className="container mx-auto max-w-5xl px-4 py-10">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-blue-700 rounded-2xl shadow-xl mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-900 via-primary to-blue-500 rounded-3xl shadow-2xl mb-5 ring-4 ring-primary/20">
             <Bot size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">ناصر — المستشار الأكاديمي الذكي</h1>
-          <p className="text-slate-500 max-w-xl mx-auto">مساعدك الشخصي الذكي للتوجيه الأكاديمي والتسجيل — متاح 24/7</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">ناصر <span className="text-primary">مساعدك الذكي</span></h1>
+          <p className="text-slate-500 max-w-xl mx-auto">مستشارك الأكاديمي الذكي للتوجيه والتسجيل — 35+ جامعة شريكة • متاح 24/7</p>
           <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
             {[["15,000+", "طالب مستفيد", GraduationCap], ["16", "جامعة شريكة", BookOpen], ["70%", "أقصى خصم", Star], ["24/7", "متاح دائماً", Heart]].map(([num, label, Icon]) => (
               <div key={label as string} className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
@@ -245,20 +245,20 @@ export default function NassirPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden" style={{ height: 580 }}>
-            <div className="bg-gradient-to-l from-primary to-blue-700 px-5 py-4 flex items-center gap-3 shrink-0">
+            <div className="bg-gradient-to-l from-blue-900 via-primary to-blue-600 px-5 py-4 flex items-center gap-3 shrink-0 shadow-md">
               <div className="relative">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-white/25 ring-2 ring-white/40 flex items-center justify-center shadow-inner">
                   <Bot size={22} className="text-white" />
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-primary" />
               </div>
               <div>
-                <p className="text-white font-bold">ناصر الذكي</p>
-                <p className="text-white/70 text-xs">متاح الآن • يقرأ الاستمارات تلقائياً</p>
+                <p className="text-white font-bold text-base">ناصر <span className="font-normal opacity-90">مساعدك الذكي</span></p>
+                <p className="text-white/80 text-xs font-medium">🟢 متاح الآن • يقرأ الاستمارات تلقائياً</p>
               </div>
               <div className="mr-auto flex items-center gap-1.5 text-white/80 text-xs bg-white/10 px-3 py-1 rounded-full">
                 <Sparkles size={12} />
-                مدعوم بـ Groq AI
+                مدعوم بالذكاء الاصطناعي
               </div>
             </div>
 
@@ -267,8 +267,8 @@ export default function NassirPage() {
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
                     msg.role === "user"
-                      ? "bg-primary text-white rounded-bl-sm"
-                      : "bg-white text-gray-800 border border-gray-100 rounded-br-sm"
+                      ? "bg-gradient-to-br from-primary to-blue-700 text-white rounded-bl-sm shadow-md"
+                      : "bg-white text-gray-800 border border-gray-100 rounded-br-sm shadow-md"
                   }`}>
                     {msg.isTyping ? (
                       <div className="flex gap-1 items-center py-1">
@@ -329,7 +329,7 @@ export default function NassirPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder="اسأل ناصر عن أي شيء — تخصصات، جامعات، تسجيل..."
+                  placeholder="اسألني عن تخصصك، معدلك، الجامعات..."
                   rows={1}
                   disabled={loading || uploadingImage}
                   className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-50"
@@ -343,14 +343,14 @@ export default function NassirPage() {
                   <Send size={17} className="rotate-180" />
                 </button>
               </div>
-              <p className="text-center text-xs text-slate-400 mt-2">اضغط 📎 لرفع صورة استمارتك وسيعبّئ ناصر بياناتك تلقائياً</p>
+              <p className="text-center text-xs text-slate-400 mt-2">📎 ارفع صورة استمارتك وسيقرأها مساعدك الذكي تلقائياً</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
               <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
-                <GraduationCap size={16} className="text-primary" /> ما يمكن لناصر فعله
+                <GraduationCap size={16} className="text-primary" /> ما يمكن لمساعدك الذكي فعله
               </h3>
               <div className="space-y-2.5">
                 {[
