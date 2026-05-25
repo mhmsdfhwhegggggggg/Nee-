@@ -50,8 +50,23 @@ router.delete("/admin/nassir/conversations/:id", async (req, res): Promise<void>
 router.post("/nassir/vision/extract", async (req, res): Promise<void> => {
   const { imageBase64, mimeType } = req.body as { imageBase64?: string; mimeType?: string };
   if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
-  const data = await extractFormDataFromImage(imageBase64, mimeType || "image/jpeg");
-  res.json(data);
+
+  // Check base64 size — reject images larger than 3MB (base64 ~= 4/3 original)
+  const estimatedBytes = imageBase64.length * 0.75;
+  if (estimatedBytes > 3 * 1024 * 1024) {
+    res.status(413).json({ error: "image_too_large", message: "الصورة كبيرة جداً. يرجى اختيار صورة أصغر أو ضغطها." });
+    return;
+  }
+
+  try {
+    const data = await extractFormDataFromImage(imageBase64, mimeType || "image/jpeg");
+    res.json(data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    req.log?.warn({ err: msg }, "Vision extraction failed");
+    // Return empty data — frontend will prompt for manual entry
+    res.json({ _error: msg });
+  }
 });
 
 router.post("/nassir/auto-register", async (req, res): Promise<void> => {
