@@ -157,15 +157,20 @@ export function NassirWidget() {
     addMessage("user", `📸 إرسال صورة الاستمارة: ${file.name}`);
 
     try {
-      const base64 = await fileToBase64(file);
       addMessage("assistant", "📋 جاري قراءة استمارتك... لحظة من فضلك ✨");
+      const { base64, mimeType: compressedMime } = await compressAndToBase64(file);
 
       const r = await fetch("/api/nassir/vision/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+        body: JSON.stringify({ imageBase64: base64, mimeType: compressedMime }),
       });
-      const data = await r.json() as ExtractedData;
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({})) as { message?: string };
+        throw new Error(errData.message || `HTTP ${r.status}`);
+      }
+      const data = await r.json() as ExtractedData & { _error?: string };
+      if (data._error) { throw new Error(data._error); }
 
       setExtractedData(data);
       setUploadingImage(false);
@@ -519,14 +524,36 @@ export function NassirWidget() {
   );
 }
 
-function fileToBase64(file: File): Promise<string> {
+function compressAndToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1] ?? "");
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1200;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+        else { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("canvas")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      const mimeType = "image/jpeg";
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error("blob")); return; }
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve({ base64: result.split(",")[1] ?? "", mimeType });
+        };
+        reader.onerror = reject;
+      }, mimeType, 0.75);
     };
-    reader.onerror = reject;
+    img.onerror = reject;
+    img.src = url;
   });
 }
