@@ -11,7 +11,6 @@ import Register from "./Register";
 import Contact from "./Contact";
 import FindUs from "./FindUs";
 import NotFound from "./not-found";
-import NassirPage from "./Nassir";
 
 import AdminLogin from "./admin/Login";
 import Dashboard from "./admin/Dashboard";
@@ -23,9 +22,8 @@ import Stats from "./admin/Stats";
 import Slides from "./admin/Slides";
 import ContactInfoAdmin from "./admin/ContactInfo";
 import Settings from "./admin/Settings";
-import TrainingFormBuilder from "./admin/TrainingFormBuilder";
-import NassirAdmin from "./admin/Nassir";
-import TrainingRegister from "./TrainingRegister";
+import RegisterFormConfig from "./admin/RegisterFormConfig";
+import UniversitySpecialties from "./admin/UniversitySpecialties";
 
 export default function AppRoutes() {
   return (
@@ -33,6 +31,7 @@ export default function AppRoutes() {
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={Dashboard} />
       <Route path="/admin/registrations" component={Registrations} />
+      <Route path="/admin/register-form-config" component={RegisterFormConfig} />
       <Route path="/admin/news" component={News} />
       <Route path="/admin/partners" component={AdminPartners} />
       <Route path="/admin/team" component={Team} />
@@ -40,8 +39,7 @@ export default function AppRoutes() {
       <Route path="/admin/slides" component={Slides} />
       <Route path="/admin/contact-info" component={ContactInfoAdmin} />
       <Route path="/admin/settings" component={Settings} />
-      <Route path="/admin/training-form" component={TrainingFormBuilder} />
-      <Route path="/admin/nassir" component={NassirAdmin} />
+      <Route path="/admin/university-specialties" component={UniversitySpecialties} />
 
       <Route path="/.*">
         <Layout>
@@ -54,10 +52,8 @@ export default function AppRoutes() {
             <Route path="/media/events" component={MediaEvents} />
             <Route path="/partners-success" component={Partners} />
             <Route path="/register" component={Register} />
-            <Route path="/training-register" component={TrainingRegister} />
             <Route path="/contact" component={Contact} />
             <Route path="/find-us" component={FindUs} />
-            <Route path="/nassir" component={NassirPage} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
