@@ -9,10 +9,13 @@ import { Router, type IRouter } from "express";
   import adminRouter from "./admin";
   import contactInfoRouter from "./contact-info";
   import registrationFormConfigRouter from "./registration-form-config";
-  import universitySpecialtiesRouter from "./university-specialties";
+  import trainingFormRouter from "./training-form";
   import nassirRouter from "./nassir";
   import universitiesRouter from "./universities";
-  import trainingFormRouter from "./training-form";
+  import universitySpecialtiesRouter from "./university-specialties";
+  import facebookWebhookRouter from "./webhooks/facebook";
+  import whatsappWebhookRouter from "./webhooks/whatsapp";
+  import telegramWebhookRouter from "./webhooks/telegram";
 
   const router: IRouter = Router();
 
@@ -26,10 +29,13 @@ import { Router, type IRouter } from "express";
   router.use(adminRouter);
   router.use(contactInfoRouter);
   router.use(registrationFormConfigRouter);
-  router.use(universitySpecialtiesRouter);
+  router.use(trainingFormRouter);
   router.use(nassirRouter);
   router.use(universitiesRouter);
-  router.use(trainingFormRouter);
+  router.use(universitySpecialtiesRouter);
+  router.use(facebookWebhookRouter);
+  router.use(whatsappWebhookRouter);
+  router.use(telegramWebhookRouter);
 
   export default router;
   
