@@ -12,44 +12,90 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
   try {
     const update = req.body as Record<string, unknown>;
 
-    // Handle callback_query (button clicks) — must be in the SAME route
+    // ─── Handle callback_query (button clicks) ───────────────────────────────
     const callbackQuery = update.callback_query as Record<string, unknown> | undefined;
     if (callbackQuery) {
       const chatId = ((callbackQuery.message as Record<string, unknown>)?.chat as Record<string, unknown>)?.id as number;
       const data = (callbackQuery.data as string) || "";
       const callbackId = callbackQuery.id as string;
 
-      await fetch(`${TGAPI()}/answerCallbackQuery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callback_query_id: callbackId }),
-      }).catch(() => {});
+      await tgApi("answerCallbackQuery", { callback_query_id: callbackId });
 
-      if (data === "menu") { await sendTGMenu(chatId); return; }
-      if (data === "chat") {
-        await sendTGText(chatId, "💬 اكتب سؤالك مباشرة وسأجيبك فوراً!\n\nمثال: *ما الجامعة المناسبة لمعدل 85%؟*");
-        return;
-      }
-
-      const STATIC: Record<string, string> = {
-        grants: `🎓 *المنح الدراسية الكاملة*\n\n✅ تغطية كاملة للرسوم للمتميزين والمحتاجين\n✅ أكثر من 15,000 طالب مستفيد\n✅ 35+ جامعة شريكة\n✅ متاحة في 8 محافظات\n\n📝 للتسجيل: almossah\\-website\\.vercel\\.app/register`,
-        discounts: `📚 *التخفيضات الجامعية*\n\n✅ خصومات من 30% إلى 70%\n✅ 16 جامعة شريكة في صنعاء\n✅ جميع التخصصات: طب، هندسة، إدارة، قانون...\n\n💬 اكتب تخصصك ومعدلك وسأجد لك أفضل خيار!`,
-        insurance: `🏥 *التأمين الصحي الشامل*\n\n✅ شبكة واسعة من أفضل المستشفيات\n✅ صيدليات ومختبرات معتمدة\n✅ باقات للفرد والأسرة بأسعار مناسبة\n\n🌐 almossah\\-website\\.vercel\\.app/training\\-register`,
-        training: `💡 *الدورات التدريبية المعتمدة*\n\n✅ اللغة الإنجليزية جميع المستويات\n✅ مهارات الحاسوب والتقنية\n✅ مهارات سوق العمل والتوظيف\n✅ شهادات معتمدة من جهات موثوقة\n\n🌐 almossah\\-website\\.vercel\\.app/training\\-register`,
-        register: `📝 *سجّل الآن*\n\n🎓 *تسجيل جامعي:*\nalmossah\\-website\\.vercel\\.app/register\n\n💡 *دورات وتأمين:*\nalmossah\\-website\\.vercel\\.app/training\\-register\n\n💬 أو اكتب *"سجّلني"* وسأساعدك خطوة بخطوة!`,
-        contact: `📞 *تواصل معنا*\n\n📍 أمانة العاصمة، شارع الزبيري، صنعاء\n⏰ السبت\\-الخميس: 8:00ص \\- 4:00م\n\n🌐 almossah\\-website\\.vercel\\.app`,
-      };
-
-      if (STATIC[data]) {
-        await sendTGText(chatId, STATIC[data], true);
-        await sendTGInlineKeyboard(chatId, "هل تريد شيئاً آخر؟", [
-          [{ text: "🏠 القائمة الرئيسية", callback_data: "menu" }, { text: "💬 اسأل ناصر", callback_data: "chat" }],
-        ]);
+      switch (data) {
+        case "menu":
+          await sendMenu(chatId);
+          break;
+        case "chat":
+          await sendHtml(chatId, "💬 اكتب سؤالك مباشرة وسأجيبك فوراً!\n\nمثال: <i>ما الجامعة المناسبة لمعدل 85%؟</i>");
+          break;
+        case "grants":
+          await sendHtml(chatId,
+            "🎓 <b>المنح الدراسية الكاملة</b>\n\n" +
+            "✅ تغطية كاملة للرسوم للمتميزين والمحتاجين\n" +
+            "✅ أكثر من 15,000 طالب مستفيد\n" +
+            "✅ 35+ جامعة شريكة\n" +
+            "✅ متاحة في 8 محافظات\n\n" +
+            "📝 للتسجيل: almossah-website.vercel.app/register"
+          );
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
+          break;
+        case "discounts":
+          await sendHtml(chatId,
+            "📚 <b>التخفيضات الجامعية</b>\n\n" +
+            "✅ خصومات من 30% إلى 70%\n" +
+            "✅ 16 جامعة شريكة في صنعاء\n" +
+            "✅ جميع التخصصات: طب، هندسة، إدارة، قانون...\n\n" +
+            "💬 اكتب تخصصك ومعدلك وسأجد لك أفضل خيار!"
+          );
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
+          break;
+        case "insurance":
+          await sendHtml(chatId,
+            "🏥 <b>التأمين الصحي الشامل</b>\n\n" +
+            "✅ شبكة واسعة من أفضل المستشفيات\n" +
+            "✅ صيدليات ومختبرات معتمدة\n" +
+            "✅ باقات للفرد والأسرة بأسعار مناسبة\n\n" +
+            "🌐 almossah-website.vercel.app/training-register"
+          );
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
+          break;
+        case "training":
+          await sendHtml(chatId,
+            "💡 <b>الدورات التدريبية المعتمدة</b>\n\n" +
+            "✅ اللغة الإنجليزية جميع المستويات\n" +
+            "✅ مهارات الحاسوب والتقنية\n" +
+            "✅ مهارات سوق العمل والتوظيف\n" +
+            "✅ شهادات معتمدة من جهات موثوقة\n\n" +
+            "🌐 almossah-website.vercel.app/training-register"
+          );
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
+          break;
+        case "register":
+          await sendHtml(chatId,
+            "📝 <b>سجّل الآن</b>\n\n" +
+            "🎓 <b>تسجيل جامعي:</b>\n" +
+            "almossah-website.vercel.app/register\n\n" +
+            "💡 <b>دورات وتأمين:</b>\n" +
+            "almossah-website.vercel.app/training-register\n\n" +
+            "💬 أو اكتب <b>سجّلني</b> وسأساعدك خطوة بخطوة!"
+          );
+          break;
+        case "contact":
+          await sendHtml(chatId,
+            "📞 <b>تواصل معنا</b>\n\n" +
+            "📍 أمانة العاصمة، شارع الزبيري، صنعاء\n" +
+            "⏰ السبت-الخميس: 8:00ص - 4:00م\n\n" +
+            "🌐 almossah-website.vercel.app"
+          );
+          break;
+        case "universities":
+          await sendUniversities(chatId);
+          break;
       }
       return;
     }
 
-    // Handle regular messages
+    // ─── Handle regular messages ───────────────────────────────────────────────
     const message = (update.message || update.edited_message) as Record<string, unknown> | undefined;
     if (!message) return;
 
@@ -60,98 +106,151 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
     const userId = String((message.from as Record<string, unknown>)?.id || chatId);
     const firstName = ((message.from as Record<string, unknown>)?.first_name as string) || "";
 
-    // Commands
+    // ─── Commands ─────────────────────────────────────────────────────────────
     if (text === "/start") {
-      await sendTGMenu(chatId, firstName);
+      await sendMenu(chatId, firstName);
       return;
     }
 
     if (text === "/register") {
-      await sendTGText(chatId, `📝 *سجّل في المؤسسة الوطنية*\n\nيمكنك التسجيل عبر:\n🎓 almossah\\-website\\.vercel\\.app/register\n\nأو أخبرني بتخصصك ومعدلك وسأرشدك! 😊`, true);
+      await sendHtml(chatId,
+        "📝 <b>سجّل في المؤسسة الوطنية</b>\n\n" +
+        "يمكنك التسجيل عبر:\n" +
+        "🎓 almossah-website.vercel.app/register\n\n" +
+        "أو أخبرني بتخصصك ومعدلك وسأرشدك!"
+      );
       return;
     }
 
     if (text === "/universities") {
-      await sendTGText(chatId, `🏛 *الجامعات الشريكة \\(16 جامعة\\)*\n\n1\\. الجامعة اللبنانية الدولية — خصم 40\\-60%\n2\\. جامعة العلوم والتكنولوجيا — خصم 50%\n3\\. جامعة سبأ — خصم 35\\-50%\n4\\. جامعة الملكة أروى — خصم 30\\-45%\n5\\. جامعة الأندلس — خصم 40\\-55%\n6\\. جامعة الحكمة — خصم 30\\-40%\n7\\. جامعة دار السلام — خصم 30\\-50%\n8\\. جامعة الناصر — خصم 35\\-50%\n9\\. جامعة المستقبل — خصم 40\\-60%\n10\\. جامعة الجيل الجديد — خصم 35\\-50%\n11\\. جامعة آزال — خصم 40\\-55%\n12\\. جامعة الإيمان — خصم 30\\-45%\n13\\. جامعة المعرفة والعلوم — خصم 35\\-50%\n14\\. جامعة الوطن — خصم 30\\-45%\n15\\. جامعة القرآن الكريم — خصم 30\\-50%\n16\\. جامعة الرازي — خصم 40\\-60%\n\n💬 اكتب تخصصك لأوجّهك للأنسب!`, true);
+      await sendUniversities(chatId);
       return;
     }
 
     if (text === "/contact") {
-      await sendTGText(chatId, `📞 *تواصل معنا*\n\n📍 أمانة العاصمة، شارع الزبيري، صنعاء\n⏰ السبت\\-الخميس: 8:00ص \\- 4:00م\n\n🌐 almossah\\-website\\.vercel\\.app`, true);
+      await sendHtml(chatId,
+        "📞 <b>تواصل معنا</b>\n\n" +
+        "📍 أمانة العاصمة، شارع الزبيري، صنعاء\n" +
+        "⏰ السبت-الخميس: 8:00ص - 4:00م\n\n" +
+        "🌐 almossah-website.vercel.app"
+      );
       return;
     }
 
-    // Send typing indicator while processing
-    await fetch(`${TGAPI()}/sendChatAction`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, action: "typing" }),
-    }).catch(() => {});
+    // ─── AI Conversation ───────────────────────────────────────────────────────
+    // Send typing indicator
+    await tgApi("sendChatAction", { chat_id: chatId, action: "typing" });
 
-    // Process with AI
-    const convo = await getOrCreateConversation("telegram", userId);
-    const reply = await processMessage(convo.id, text);
+    try {
+      const convo = await getOrCreateConversation("telegram", userId);
+      const reply = await processMessage(convo.id, text);
 
-    // Clean reply for Telegram (remove markdown that may break)
-    const cleanReply = reply
-      .replace(/[_*[\]()~`>#+=|{}.!-]/g, (c) => `\\${c}`)
-      .slice(0, 4000);
+      // Send as plain text — no formatting to avoid Telegram parse errors
+      await tgApi("sendMessage", { chat_id: chatId, text: reply.slice(0, 4000) });
 
-    await sendTGText(chatId, cleanReply, true);
-
-    // Quick reply buttons after AI response
-    await sendTGInlineKeyboard(chatId, "\_", [
-      [{ text: "🎓 المنح", callback_data: "grants" }, { text: "📚 التخفيضات", callback_data: "discounts" }],
-      [{ text: "📝 سجّل الآن", callback_data: "register" }, { text: "🏠 القائمة", callback_data: "menu" }],
-    ]);
+      await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
+    } catch (aiErr) {
+      await tgApi("sendMessage", {
+        chat_id: chatId,
+        text: "عذراً، حدث خطأ أثناء المعالجة. حاول مرة أخرى أو اختر من القائمة أدناه."
+      });
+      await sendMenu(chatId);
+      console.error("[Nassir AI error]", aiErr instanceof Error ? aiErr.message : String(aiErr));
+    }
   } catch (err) {
-    // Log error silently — do not crash
     console.error("[Telegram webhook error]", err instanceof Error ? err.message : String(err));
   }
 });
 
-async function sendTGMenu(chatId: number, firstName?: string) {
-  const name = firstName ? ` ${firstName}` : "";
-  await sendTGInlineKeyboard(
-    chatId,
-    `🏛 *المؤسسة الوطنية للتنمية الشاملة*\nأهلاً${name}\\! أنا ناصر، مستشارك الأكاديمي الذكي 👋\n\nيمكنني مساعدتك في:\n• اختيار الجامعة والتخصص المناسب\n• معرفة التخفيضات والمنح المتاحة\n• التسجيل خطوة بخطوة\n\n*اختر ما يهمك أو اكتب سؤالك مباشرة:*`,
-    [
-      [{ text: "🎓 المنح الدراسية", callback_data: "grants" }, { text: "📚 التخفيضات", callback_data: "discounts" }],
-      [{ text: "🏥 التأمين الصحي", callback_data: "insurance" }, { text: "💡 الدورات", callback_data: "training" }],
-      [{ text: "📝 سجّل الآن", callback_data: "register" }, { text: "📞 تواصل معنا", callback_data: "contact" }],
-      [{ text: "💬 اسأل ناصر مباشرة", callback_data: "chat" }],
-    ],
-    true
-  );
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function tgApi(method: string, body: Record<string, unknown>): Promise<unknown> {
+  try {
+    const res = await fetch(`${TGAPI()}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json() as { ok: boolean; description?: string };
+    if (!json.ok) {
+      console.error(`[Telegram API ${method} error]`, json.description);
+    }
+    return json;
+  } catch (e) {
+    console.error(`[Telegram API ${method} fetch error]`, e instanceof Error ? e.message : String(e));
+    return null;
+  }
 }
 
-async function sendTGText(chatId: number, text: string, markdownV2 = false) {
-  const body: Record<string, unknown> = { chat_id: chatId, text };
-  if (markdownV2) body.parse_mode = "MarkdownV2";
-  await fetch(`${TGAPI()}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch(() => {});
+async function sendHtml(chatId: number, html: string) {
+  await tgApi("sendMessage", { chat_id: chatId, text: html, parse_mode: "HTML" });
 }
 
-async function sendTGInlineKeyboard(
-  chatId: number,
-  text: string,
-  keyboard: Array<Array<{ text: string; callback_data: string }>>,
-  markdownV2 = false
-) {
-  const body: Record<string, unknown> = {
+async function sendKeyboard(chatId: number, text: string, keyboard: Array<Array<{ text: string; callback_data: string }>>) {
+  await tgApi("sendMessage", {
     chat_id: chatId,
-    text: text || " ",
+    text,
+    parse_mode: "HTML",
     reply_markup: { inline_keyboard: keyboard },
-  };
-  if (markdownV2) body.parse_mode = "MarkdownV2";
-  await fetch(`${TGAPI()}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch(() => {});
+  });
+}
+
+function mainKeyboard() {
+  return [
+    [{ text: "🎓 المنح", callback_data: "grants" }, { text: "📚 التخفيضات", callback_data: "discounts" }],
+    [{ text: "📝 سجّل الآن", callback_data: "register" }, { text: "🏠 القائمة", callback_data: "menu" }],
+  ];
+}
+
+async function sendMenu(chatId: number, firstName?: string) {
+  const name = firstName ? ` ${firstName}` : "";
+  await tgApi("sendMessage", {
+    chat_id: chatId,
+    text:
+      `🏛 <b>المؤسسة الوطنية للتنمية الشاملة</b>\n` +
+      `أهلاً${name}! أنا ناصر، مستشارك الأكاديمي الذكي 👋\n\n` +
+      `يمكنني مساعدتك في:\n` +
+      `• اختيار الجامعة والتخصص المناسب\n` +
+      `• معرفة التخفيضات والمنح المتاحة\n` +
+      `• التسجيل خطوة بخطوة\n\n` +
+      `<b>اختر ما يهمك أو اكتب سؤالك مباشرة:</b>`,
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🎓 المنح الدراسية", callback_data: "grants" }, { text: "📚 التخفيضات", callback_data: "discounts" }],
+        [{ text: "🏥 التأمين الصحي", callback_data: "insurance" }, { text: "💡 الدورات", callback_data: "training" }],
+        [{ text: "📝 سجّل الآن", callback_data: "register" }, { text: "📞 تواصل معنا", callback_data: "contact" }],
+        [{ text: "🏛 الجامعات الشريكة", callback_data: "universities" }, { text: "💬 اسأل ناصر", callback_data: "chat" }],
+      ],
+    },
+  });
+}
+
+async function sendUniversities(chatId: number) {
+  await tgApi("sendMessage", {
+    chat_id: chatId,
+    text:
+      "🏛 <b>الجامعات الشريكة (16 جامعة)</b>\n\n" +
+      "1. الجامعة اللبنانية الدولية — خصم 40-60%\n" +
+      "2. جامعة العلوم والتكنولوجيا — خصم 50%\n" +
+      "3. جامعة سبأ — خصم 35-50%\n" +
+      "4. جامعة الملكة أروى — خصم 30-45%\n" +
+      "5. جامعة الأندلس — خصم 40-55%\n" +
+      "6. جامعة الحكمة — خصم 30-40%\n" +
+      "7. جامعة دار السلام — خصم 30-50%\n" +
+      "8. جامعة الناصر — خصم 35-50%\n" +
+      "9. جامعة المستقبل — خصم 40-60%\n" +
+      "10. جامعة الجيل الجديد — خصم 35-50%\n" +
+      "11. جامعة آزال — خصم 40-55%\n" +
+      "12. جامعة الإيمان — خصم 30-45%\n" +
+      "13. جامعة المعرفة والعلوم — خصم 35-50%\n" +
+      "14. جامعة الوطن — خصم 30-45%\n" +
+      "15. جامعة القرآن الكريم — خصم 30-50%\n" +
+      "16. جامعة الرازي — خصم 40-60%\n\n" +
+      "💬 اكتب تخصصك لأوجّهك للأنسب!",
+    parse_mode: "HTML",
+  });
+  await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
 }
 
 export default router;
