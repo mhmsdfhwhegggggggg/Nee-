@@ -5,25 +5,34 @@ const router = Router();
 const TG_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN || "";
 const TGAPI = () => `https://api.telegram.org/bot${TG_TOKEN()}`;
 
-// Deduplication: track processed update IDs to prevent double-processing
-const processedUpdates = new Set<number>();
+// Short system prompt for Telegram — must fit within 10s Vercel timeout
+const TELEGRAM_PROMPT = `[قاعدة لا استثناء]: رد بالعربية الفصحى فقط. ممنوع استخدام أي كلمة إنجليزية.
+
+أنت ناصر، المستشار الأكاديمي للمؤسسة الوطنية للتنمية الشاملة (اليمن).
+أسلوبك: دافئ، موجز، مفيد. ردودك 3-5 جمل فقط.
+
+معك:
+• 16 جامعة شريكة: اللبنانية الدولية، العلوم والتكنولوجيا، سبأ، الملكة أروى، الأندلس، الحكمة، دار السلام، الناصر، المستقبل، الجيل الجديد، آزال، الإيمان، المعرفة، الوطن، القرآن الكريم، الرازي
+• تخفيضات 30-70% | منح دراسية للمتميزين | تأمين صحي | دورات تدريبية
+• معدلات القبول: طب 90%+ | هندسة 80%+ | تقنية معلومات 70%+ | إدارة 65%+
+
+للتسجيل: almossah-website.vercel.app/register
+تواصل: صنعاء، شارع الزبيري — السبت-الخميس 8ص-4م`;
+
+import OpenAI from "openai";
+
+const groqFast = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 router.post("/nassir/webhooks/telegram", async (req, res) => {
-  // Respond to Telegram immediately so it never retries
-  res.sendStatus(200);
-  if (!TG_TOKEN()) return;
+  // CRITICAL: Do NOT send 200 early — Vercel kills the function after response!
+  // We process everything first, then send 200 at the end.
+  if (!TG_TOKEN()) { res.sendStatus(200); return; }
 
   try {
     const update = req.body as Record<string, unknown>;
-    const updateId = update.update_id as number | undefined;
-    if (updateId !== undefined) {
-      if (processedUpdates.has(updateId)) return;
-      processedUpdates.add(updateId);
-      if (processedUpdates.size > 1000) {
-        const first = processedUpdates.values().next().value;
-        if (first !== undefined) processedUpdates.delete(first);
-      }
-    }
 
     // ─── Callback query (button clicks) ─────────────────────────────────────
     const callbackQuery = update.callback_query as Record<string, unknown> | undefined;
@@ -32,7 +41,6 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
       const data = (callbackQuery.data as string) || "";
       const callbackId = callbackQuery.id as string;
 
-      // Acknowledge the button click immediately
       void tgApi("answerCallbackQuery", { callback_query_id: callbackId });
 
       switch (data) {
@@ -44,28 +52,28 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
             "✅ أكثر من 15,000 طالب مستفيد\n" +
             "✅ 35+ جامعة شريكة — 8 محافظات\n\n" +
             "📝 التسجيل: almossah-website.vercel.app/register");
-            await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
         case "discounts": await sendHtml(chatId,
             "📚 <b>التخفيضات الجامعية</b>\n\n" +
             "✅ خصومات 30% إلى 70%\n" +
             "✅ 16 جامعة شريكة في صنعاء\n" +
             "✅ جميع التخصصات: طب، هندسة، إدارة، قانون...\n\n" +
             "💬 اكتب تخصصك ومعدلك وسأجد لك أفضل خيار!");
-            await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
         case "insurance": await sendHtml(chatId,
             "🏥 <b>التأمين الصحي الشامل</b>\n\n" +
             "✅ شبكة واسعة من أفضل المستشفيات\n" +
             "✅ صيدليات ومختبرات معتمدة\n" +
             "✅ باقات للفرد والأسرة\n\n" +
             "🌐 almossah-website.vercel.app/training-register");
-            await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
         case "training": await sendHtml(chatId,
             "💡 <b>الدورات التدريبية المعتمدة</b>\n\n" +
             "✅ اللغة الإنجليزية — جميع المستويات\n" +
             "✅ مهارات الحاسوب والتقنية\n" +
             "✅ مهارات سوق العمل\n\n" +
             "🌐 almossah-website.vercel.app/training-register");
-            await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
+          await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard()); break;
         case "register": await sendHtml(chatId,
             "📝 <b>سجّل الآن</b>\n\n" +
             "🎓 <b>تسجيل جامعي:</b>\nalmossah-website.vercel.app/register\n\n" +
@@ -78,41 +86,43 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
             "🌐 almossah-website.vercel.app"); break;
         case "universities": await sendUniversities(chatId); break;
       }
+
+      res.sendStatus(200);
       return;
     }
 
     // ─── Regular text messages ───────────────────────────────────────────────
     const message = (update.message || update.edited_message) as Record<string, unknown> | undefined;
-    if (!message) return;
+    if (!message) { res.sendStatus(200); return; }
 
     const chatId = (message.chat as Record<string, unknown>)?.id as number;
     const text = ((message.text as string) || "").trim();
-    if (!chatId || !text) return;
+    if (!chatId || !text) { res.sendStatus(200); return; }
 
     const userId = String((message.from as Record<string, unknown>)?.id || chatId);
     const firstName = ((message.from as Record<string, unknown>)?.first_name as string) || "";
 
     // ─── Commands ────────────────────────────────────────────────────────────
-    if (text === "/start") { await sendMenu(chatId, firstName); return; }
+    if (text === "/start") { await sendMenu(chatId, firstName); res.sendStatus(200); return; }
     if (text === "/register") {
       await sendHtml(chatId,
         "📝 <b>سجّل في المؤسسة الوطنية</b>\n\n" +
         "🎓 almossah-website.vercel.app/register\n\n" +
         "أو أخبرني بتخصصك ومعدلك وسأرشدك!");
-      return;
+      res.sendStatus(200); return;
     }
-    if (text === "/universities") { await sendUniversities(chatId); return; }
+    if (text === "/universities") { await sendUniversities(chatId); res.sendStatus(200); return; }
     if (text === "/contact") {
       await sendHtml(chatId,
         "📞 <b>تواصل معنا</b>\n\n" +
         "📍 أمانة العاصمة، شارع الزبيري، صنعاء\n" +
         "⏰ السبت-الخميس: 8:00ص - 4:00م\n\n" +
         "🌐 almossah-website.vercel.app");
-      return;
+      res.sendStatus(200); return;
     }
 
-    // ─── AI Conversation — Fast Path ─────────────────────────────────────────
-    // Step 1: Send "thinking" placeholder immediately so user sees activity
+    // ─── AI Conversation ─────────────────────────────────────────────────────
+    // Step 1: Send "thinking" placeholder
     const thinkingResult = await tgApi("sendMessage", {
       chat_id: chatId,
       text: "⏳ ناصر يفكر...",
@@ -121,29 +131,29 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
     const thinkingMsgId = thinkingResult?.result?.message_id;
 
     try {
-      // Step 2: Get/create conversation and call fast AI
+      // Step 2: Get/create conversation
       const convo = await getOrCreateConversation("telegram", userId);
-      const reply = await processMessageFast(convo.id, text);
 
-      // Step 3: Edit the "thinking" message with the real reply
+      // Step 3: Call Groq directly with SHORT Telegram prompt for speed
+      const reply = await callGroqFast(userId, text, convo.id);
+
+      // Step 4: Edit "thinking" message with real reply
       if (thinkingMsgId) {
         await tgApi("editMessageText", {
           chat_id: chatId,
           message_id: thinkingMsgId,
           text: reply.slice(0, 4000),
-          parse_mode: "HTML",
         });
       } else {
         await tgApi("sendMessage", { chat_id: chatId, text: reply.slice(0, 4000) });
       }
 
-      // Step 4: Quick action buttons after AI response
+      // Step 5: Quick action buttons
       await sendKeyboard(chatId, "هل تريد شيئاً آخر؟", mainKeyboard());
 
     } catch (aiErr) {
       console.error("[Nassir AI error]", aiErr instanceof Error ? aiErr.message : String(aiErr));
-      // Edit thinking message with error
-      const errText = "عذراً، تأخّر الرد قليلاً. اكتب سؤالك مرة أخرى وسأجيبك!";
+      const errText = "عذراً، تأخّر الرد. اكتب سؤالك مرة أخرى وسأجيبك!";
       if (thinkingMsgId) {
         await tgApi("editMessageText", { chat_id: chatId, message_id: thinkingMsgId, text: errText });
       } else {
@@ -154,7 +164,25 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
   } catch (err) {
     console.error("[Telegram webhook error]", err instanceof Error ? err.message : String(err));
   }
+
+  // ALWAYS respond to Telegram LAST to keep Vercel function alive during processing
+  res.sendStatus(200);
 });
+
+// Direct Groq call with short Telegram prompt — bypasses processMessageFast for speed
+async function callGroqFast(userId: string, userText: string, _convId: number): Promise<string> {
+  const response = await groqFast.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    max_tokens: 400,
+    temperature: 0,
+    messages: [
+      { role: "system", content: TELEGRAM_PROMPT },
+      { role: "user", content: userText },
+    ],
+  });
+  return response.choices[0]?.message?.content?.trim()
+    || "عذراً، حاول مرة أخرى.";
+}
 
 // ─── Helper functions ────────────────────────────────────────────────────────
 
@@ -166,9 +194,7 @@ async function tgApi(method: string, body: Record<string, unknown>): Promise<unk
       body: JSON.stringify(body),
     });
     const json = await res.json() as { ok: boolean; description?: string; result?: unknown };
-    if (!json.ok) {
-      console.error(`[TG ${method}]`, json.description);
-    }
+    if (!json.ok) console.error(`[TG ${method}]`, json.description);
     return json;
   } catch (e) {
     console.error(`[TG ${method} fetch]`, e instanceof Error ? e.message : String(e));
