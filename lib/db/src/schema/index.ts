@@ -6,4 +6,6 @@ export * from "./registrations";
   export * from "./slides";
   export * from "./contact-info";
   export * from "./registration-form-config";
+  export * from "./chat";
+  export * from "./universities";
   
