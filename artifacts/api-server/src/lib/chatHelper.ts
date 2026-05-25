@@ -312,38 +312,33 @@ export interface ExtractedFormData {
 }
 
 export async function extractFormDataFromImage(imageBase64: string, mimeType: string): Promise<ExtractedFormData> {
-  const prompt = `أنت نظام ذكاء اصطناعي متخصص في قراءة استمارات الثانوية العامة اليمنية واستخراج البيانات منها.
+  const prompt = `أنت نظام متخصص في قراءة استمارات الثانوية العامة اليمنية.
+أعد JSON فقط بدون أي نص آخر:
+{"fullName":"الاسم الرباعي","gpa":"المعدل رقم فقط","department":"علمي أو أدبي","city":"المحافظة","notes":""}
+إذا لم تقرأ حقلاً اتركه فارغاً. المعدل أرقام فقط مثل 87 أو 425.`;
 
-استخرج المعلومات التالية من الصورة وأعدها بتنسيق JSON فقط بدون أي نص إضافي:
-{
-  "fullName": "الاسم الرباعي الكامل للطالب",
-  "gpa": "المعدل أو المجموع (أرقام فقط مثل 85.5 أو 425)",
-  "department": "القسم (علمي أو أدبي)",
-  "city": "المحافظة أو المدينة",
-  "notes": "أي معلومات مهمة أخرى كالتاريخ أو رقم الجلوس"
-}
+  // 20-second timeout for vision API
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error("Vision timeout after 20s")), 20000)
+  );
 
-قواعد مهمة:
-- إذا لم تتمكن من قراءة حقل بوضوح، اتركه فارغاً ""
-- استخرج رقماً فقط للمعدل (مثال: "87.5" لا "87.5%")
-- إذا كان المعدل من 500، اكتبه كما هو
-- أعد JSON فقط بدون أي شرح`;
+  const apiCall = groq.chat.completions.create({
+    model: GROQ_VISION_MODEL,
+    max_tokens: 300,
+    temperature: 0,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+        ],
+      },
+    ],
+  });
 
   try {
-    const response = await groq.chat.completions.create({
-      model: GROQ_VISION_MODEL,
-      max_tokens: 512,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-          ],
-        },
-      ],
-    });
-
+    const response = await Promise.race([apiCall, timeoutPromise]);
     const text = response.choices[0]?.message?.content || "{}";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return {};
