@@ -5,6 +5,9 @@ const router = Router();
 const TG_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN || "";
 const TGAPI = () => `https://api.telegram.org/bot${TG_TOKEN()}`;
 
+// Deduplication: track processed update IDs to prevent double-processing
+const processedUpdates = new Set<number>();
+
 router.post("/nassir/webhooks/telegram", async (req, res) => {
   // Respond to Telegram immediately so it never retries
   res.sendStatus(200);
@@ -12,6 +15,15 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
 
   try {
     const update = req.body as Record<string, unknown>;
+    const updateId = update.update_id as number | undefined;
+    if (updateId !== undefined) {
+      if (processedUpdates.has(updateId)) return;
+      processedUpdates.add(updateId);
+      if (processedUpdates.size > 1000) {
+        const first = processedUpdates.values().next().value;
+        if (first !== undefined) processedUpdates.delete(first);
+      }
+    }
 
     // ─── Callback query (button clicks) ─────────────────────────────────────
     const callbackQuery = update.callback_query as Record<string, unknown> | undefined;
@@ -119,6 +131,7 @@ router.post("/nassir/webhooks/telegram", async (req, res) => {
           chat_id: chatId,
           message_id: thinkingMsgId,
           text: reply.slice(0, 4000),
+          parse_mode: "HTML",
         });
       } else {
         await tgApi("sendMessage", { chat_id: chatId, text: reply.slice(0, 4000) });
@@ -219,22 +232,22 @@ async function sendUniversities(chatId: number) {
     chat_id: chatId,
     text:
       "🏛 <b>الجامعات الشريكة (16 جامعة)</b>\n\n" +
-      "1. الجامعة اللبنانية الدولية — خصم 40-60%\n" +
-      "2. جامعة العلوم والتكنولوجيا — خصم 50%\n" +
-      "3. جامعة سبأ — خصم 35-50%\n" +
-      "4. جامعة الملكة أروى — خصم 30-45%\n" +
-      "5. جامعة الأندلس — خصم 40-55%\n" +
-      "6. جامعة الحكمة — خصم 30-40%\n" +
-      "7. جامعة دار السلام — خصم 30-50%\n" +
-      "8. جامعة الناصر — خصم 35-50%\n" +
-      "9. جامعة المستقبل — خصم 40-60%\n" +
-      "10. جامعة الجيل الجديد — خصم 35-50%\n" +
-      "11. جامعة آزال — خصم 40-55%\n" +
-      "12. جامعة الإيمان — خصم 30-45%\n" +
-      "13. جامعة المعرفة والعلوم — خصم 35-50%\n" +
-      "14. جامعة الوطن — خصم 30-45%\n" +
-      "15. جامعة القرآن الكريم — خصم 30-50%\n" +
-      "16. جامعة الرازي — خصم 40-60%\n\n" +
+      "1. الجامعة اللبنانية الدولية\n" +
+      "2. جامعة العلوم والتكنولوجيا\n" +
+      "3. جامعة سبأ\n" +
+      "4. جامعة الملكة أروى\n" +
+      "5. جامعة الأندلس\n" +
+      "6. جامعة الحكمة\n" +
+      "7. جامعة دار السلام\n" +
+      "8. جامعة الناصر\n" +
+      "9. جامعة المستقبل\n" +
+      "10. جامعة الجيل الجديد\n" +
+      "11. جامعة آزال\n" +
+      "12. جامعة الإيمان\n" +
+      "13. جامعة المعرفة والعلوم\n" +
+      "14. جامعة الوطن\n" +
+      "15. جامعة القرآن الكريم\n" +
+      "16. جامعة الرازي\n\n" +
       "💬 اكتب تخصصك لأوجّهك للأنسب!",
     parse_mode: "HTML",
   });
