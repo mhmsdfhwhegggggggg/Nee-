@@ -79,9 +79,9 @@ export function NassirWidget() {
 
     let welcome = "";
     if (isRegisterPage) {
-      welcome = `مرحباً بك في خطوة نحو مستقبلك! 🎓\n\nأنا **ناصر**، مستشارك الأكاديمي الشخصي.\n\nأنت على بعد دقيقة واحدة من إتمام تسجيلك. لدي طريقتان لمساعدتك:\n\n📸 **الأسرع:** أرسل صورة استمارة ثانويتك وسأملأ كل شيء تلقائياً في ثوانٍ!\n\n✍️ **أو:** أدخل بياناتك وأنا أرشدك خطوة بخطوة.\n\nأكثر من **15,000 طالب** سجّلوا بنفس الطريقة — أنت القادم! 🌟`;
+      welcome = `مرحباً بك في خطوة نحو مستقبلك! 🎓\n\nأنا **ناصر**، **مساعدك الذكي** للتوجيه الأكاديمي. 🎓\n\nأنت على بعد دقيقة واحدة من إتمام تسجيلك. لدي طريقتان لمساعدتك:\n\n📸 **الأسرع:** أرسل صورة استمارة ثانويتك وسأملأ كل شيء تلقائياً في ثوانٍ!\n\n✍️ **أو:** أدخل بياناتك وأنا أرشدك خطوة بخطوة.\n\nأكثر من **15,000 طالب** سجّلوا بنفس الطريقة — أنت القادم! 🌟`;
     } else {
-      welcome = `مرحباً بك في المؤسسة الوطنية للتنمية الشاملة! 👋\n\nأنا **ناصر**، مستشارك الأكاديمي الذكي — هنا 24/7 لخدمتك.\n\nيمكنني مساعدتك في:\n🎓 المنح الدراسية والتخفيضات\n🏥 التأمين الصحي\n💡 الدورات التدريبية\n📝 إتمام التسجيل بسهولة\n\nكيف يمكنني مساعدتك اليوم؟`;
+      welcome = `مرحباً بك في المؤسسة الوطنية للتنمية الشاملة! 👋\n\nأنا **ناصر**، **مساعدك الذكي** — هنا 24/7 لأجلك. 🤖✨\n\nيمكنني مساعدتك في:\n🎓 المنح الدراسية والتخفيضات\n🏥 التأمين الصحي\n💡 الدورات التدريبية\n📝 إتمام التسجيل بسهولة\n\nكيف يمكنني مساعدتك اليوم؟`;
     }
 
     addMessage("assistant", welcome);
@@ -382,17 +382,17 @@ export function NassirWidget() {
             style={{ maxHeight: "calc(100vh - 120px)", height: 540 }}
             dir="rtl"
           >
-            <div className="bg-gradient-to-l from-primary to-blue-700 px-4 py-3 flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-l from-blue-900 via-primary to-blue-600 px-4 py-3 flex items-center justify-between shrink-0 shadow-md">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-white/25 ring-2 ring-white/40 flex items-center justify-center shadow-inner">
                     <Bot size={20} className="text-white" />
                   </div>
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-primary" />
                 </div>
                 <div>
                   <p className="text-white font-bold text-sm leading-tight">ناصر</p>
-                  <p className="text-white/75 text-xs">المستشار الأكاديمي الذكي • متاح الآن</p>
+                  <p className="text-white/80 text-xs font-medium">مساعدك الذكي • متاح الآن 🟢</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" className="text-white/80 hover:text-white hover:bg-white/20 h-8 w-8" onClick={() => setOpen(false)}>
@@ -409,11 +409,11 @@ export function NassirWidget() {
 
             <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-3 space-y-3">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"} items-end gap-1`}>
                   <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                     msg.role === "user"
-                      ? "bg-primary text-white rounded-bl-sm"
-                      : "bg-white text-gray-800 shadow-sm border border-gray-100 rounded-br-sm"
+                      ? "bg-gradient-to-br from-primary to-blue-700 text-white rounded-bl-sm shadow-md"
+                      : "bg-white text-gray-800 shadow-md border border-gray-100 rounded-br-sm"
                   }`}>
                     {msg.isTyping ? (
                       <div className="flex gap-1 items-center py-1 px-1">
@@ -434,7 +434,7 @@ export function NassirWidget() {
                     <button
                       key={qr.label}
                       onClick={() => handleQuickReply(qr.text)}
-                      className="text-xs bg-white border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors rounded-full px-3 py-1.5 font-medium"
+                      className="text-xs bg-white border border-primary/40 text-primary hover:bg-gradient-to-r hover:from-primary hover:to-blue-600 hover:text-white hover:border-transparent transition-all rounded-full px-3 py-1.5 font-semibold shadow-sm"
                     >
                       {qr.label}
                     </button>
