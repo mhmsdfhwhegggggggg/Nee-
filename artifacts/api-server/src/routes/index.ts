@@ -8,11 +8,8 @@ import statsRouter from "./stats";
 import slidesRouter from "./slides";
 import adminRouter from "./admin";
 import contactInfoRouter from "./contact-info";
-import trainingFormRouter from "./training-form";
-import nassirRouter from "./nassir";
-import facebookWebhookRouter from "./webhooks/facebook";
-import whatsappWebhookRouter from "./webhooks/whatsapp";
-import telegramWebhookRouter from "./webhooks/telegram";
+import registrationFormConfigRouter from "./registration-form-config";
+import universitySpecialtiesRouter from "./university-specialties";
 
 const router: IRouter = Router();
 
@@ -25,10 +22,7 @@ router.use(statsRouter);
 router.use(slidesRouter);
 router.use(adminRouter);
 router.use(contactInfoRouter);
-router.use(trainingFormRouter);
-router.use(nassirRouter);
-router.use(facebookWebhookRouter);
-router.use(whatsappWebhookRouter);
-router.use(telegramWebhookRouter);
+router.use(registrationFormConfigRouter);
+router.use(universitySpecialtiesRouter);
 
 export default router;
