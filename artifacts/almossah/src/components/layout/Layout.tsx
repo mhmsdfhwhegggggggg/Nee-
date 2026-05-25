@@ -1,21 +1,20 @@
 import { TopBar } from "./TopBar";
-  import { Header } from "./Header";
-  import { Footer } from "./Footer";
-  import { NassirWidget } from "@/components/NassirWidget";
+import { Header } from "./Header";
+import { Footer } from "./Footer";
+import { NassirWidget } from "@/components/NassirWidget";
 
-  interface LayoutProps {
-    children: React.ReactNode;
-  }
+interface LayoutProps {
+  children: React.ReactNode;
+}
 
-  export function Layout({ children }: LayoutProps) {
-    return (
-      <div className="flex flex-col min-h-screen font-sans">
-        <TopBar />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <NassirWidget />
-      </div>
-    );
-  }
-  
+export function Layout({ children }: LayoutProps) {
+  return (
+    <div className="flex flex-col min-h-screen font-sans">
+      <TopBar />
+      <Header />
+      <main className="flex-1">{children}</main>
+      <Footer />
+      <NassirWidget />
+    </div>
+  );
+}

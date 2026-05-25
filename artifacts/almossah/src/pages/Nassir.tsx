@@ -1,245 +1,414 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-  import { Send, Bot, Loader2, Sparkles, GraduationCap, HeartPulse, BookOpen, Phone, MessageCircle, ChevronRight } from "lucide-react";
-  import { Layout } from "@/components/layout/Layout";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Bot, Send, Upload, Check, Loader2, ImageIcon, Sparkles, GraduationCap, BookOpen, Heart, Star } from "lucide-react";
 
-  const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  isTyping?: boolean;
+}
 
-  interface Msg {
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-    streaming?: boolean;
-  }
+interface ExtractedData {
+  fullName?: string;
+  gpa?: string;
+  department?: string;
+  city?: string;
+  notes?: string;
+}
 
-  const MENU_ITEMS = [
-    { id: "grants",    icon: GraduationCap, label: "المنح الدراسية",      color: "bg-blue-50 text-blue-700 border-blue-200",    msg: "ما هي المنح الدراسية المتاحة وكيف أتقدم لها؟" },
-    { id: "discounts", icon: BookOpen,      label: "التخفيضات الجامعية",  color: "bg-purple-50 text-purple-700 border-purple-200", msg: "ما هي التخفيضات الجامعية المتوفرة والجامعات الشريكة؟" },
-    { id: "insurance", icon: HeartPulse,   label: "التأمين الصحي",       color: "bg-green-50 text-green-700 border-green-200",  msg: "أريد معلومات عن التأمين الصحي وتكلفته ومزاياه" },
-    { id: "training",  icon: Sparkles,     label: "الدورات التدريبية",   color: "bg-orange-50 text-orange-700 border-orange-200", msg: "ما هي الدورات التدريبية المتاحة وكيف أسجل؟" },
-    { id: "register",  icon: ChevronRight, label: "كيف أسجل؟",           color: "bg-red-50 text-red-700 border-red-200",        msg: "كيف يمكنني التسجيل في خدمات المؤسسة؟" },
-    { id: "contact",   icon: Phone,        label: "تواصل معنا",          color: "bg-gray-50 text-gray-700 border-gray-200",     msg: "ما هي معلومات التواصل وعنوان المؤسسة؟" },
+export default function NassirPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [regData, setRegData] = useState<Record<string, string>>({});
+  const [regStep, setRegStep] = useState(0);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const initialized = useRef(false);
+
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(() => { scrollToBottom(); }, [messages]);
+
+  const addMessage = (role: "user" | "assistant", content: string) => {
+    const id = Math.random().toString(36).slice(2);
+    setMessages((prev) => [...prev, { id, role, content }]);
+    return id;
+  };
+
+  const init = async () => {
+    if (initialized.current) return;
+    initialized.current = true;
+    const r = await fetch("/api/nassir/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform: "web" }),
+    });
+    const d = await r.json() as { id: number };
+    setConversationId(d.id);
+
+    const welcome = `مرحباً بك! أنا **ناصر** 🎓\nمستشارك الأكاديمي الذكي للمؤسسة الوطنية للتنمية الشاملة.\n\nلدي معلومات كاملة عن:\n🏛 16 جامعة شريكة مع تخصصاتها الكاملة\n📊 معدلات القبول لكل تخصص\n🎯 المنح والتخفيضات المتاحة\n📝 التسجيل الذكي من صورة الاستمارة!\n\nما الذي يشغل تفكيرك اليوم؟`;
+    addMessage("assistant", welcome);
+  };
+
+  useEffect(() => { void init(); }, []);
+
+  const sendToApi = async (text: string, cid: number) => {
+    const typingId = Math.random().toString(36).slice(2);
+    setMessages((prev) => [...prev, { id: typingId, role: "assistant", content: "", isTyping: true }]);
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/nassir/conversations/${cid}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      setMessages((prev) => prev.filter((m) => m.id !== typingId));
+      if (!r.body) { setLoading(false); return; }
+
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      const msgId = Math.random().toString(36).slice(2);
+      setMessages((prev) => [...prev, { id: msgId, role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6)) as { content?: string; done?: boolean };
+            if (data.content) {
+              full += data.content;
+              setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: full } : m));
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== typingId));
+      addMessage("assistant", "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.");
+    }
+    setLoading(false);
+  };
+
+  const handleSend = () => {
+    if (!input.trim() || !conversationId) return;
+    const text = input.trim();
+
+    if (regStep === 2) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, fullName: text })); addMessage("assistant", `شكراً ${text}! 😊\n\nما **معدلك** في الثانوية؟ (مثال: 85.5 أو 425)`); setRegStep(4); return; }
+    if (regStep === 4) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, gpa: text })); addMessage("assistant", "📊 ممتاز!\n\nما **قسمك**؟ (علمي / أدبي)"); setRegStep(5); return; }
+    if (regStep === 5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, department: text })); addMessage("assistant", "👍\n\nمن أي **مدينة أو محافظة**؟"); setRegStep(6); return; }
+    if (regStep === 6) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, city: text })); addMessage("assistant", "الآن أخبرني: **ما التخصص الذي تريده؟**"); setRegStep(6.5); return; }
+    if (regStep === 6.5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, specialization: text })); addMessage("assistant", "وأخيراً — **رقم هاتفك** لإتمام التسجيل:"); setRegStep(3); return; }
+    if (regStep === 3) {
+      if (text.length < 9) { addMessage("user", text); setInput(""); addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم صحيح (9 أرقام على الأقل)."); return; }
+      addMessage("user", text); setInput("");
+      const fullData = { ...regData, phone: text };
+      setRegData(fullData);
+      const programs = `اختر البرنامج المناسب:\n\n1️⃣ منحة دراسية كاملة\n2️⃣ تخفيض جامعي\n3️⃣ دورة تدريبية\n4️⃣ تأمين صحي`;
+      addMessage("assistant", programs); setRegStep(7); return;
+    }
+    if (regStep === 7) {
+      addMessage("user", text); setInput("");
+      let prog = "منح دراسية";
+      if (text.includes("2") || text.includes("تخفيض")) prog = "تخفيضات جامعية";
+      else if (text.includes("3") || text.includes("دورة")) prog = "دورات تدريبية";
+      else if (text.includes("4") || text.includes("تأمين")) prog = "تأمين طبي";
+      const d = { ...regData, programType: prog };
+      setRegData(d);
+      setExtractedData(d as ExtractedData);
+      const summary = [`👤 الاسم: **${d.fullName || "غير محدد"}**`, `📱 الهاتف: **${d.phone || ""}**`, d.gpa ? `📊 المعدل: **${d.gpa}**` : null, d.department ? `📚 القسم: **${d.department}**` : null, d.city ? `🏙 المدينة: **${d.city}**` : null, `🎯 البرنامج: **${prog}**`].filter(Boolean).join("\n");
+      addMessage("assistant", `✅ **ملخص طلبك:**\n\n${summary}\n\nهل تؤكد التسجيل؟`);
+      setRegStep(8); setAwaitingConfirm(true); return;
+    }
+    if (regStep === 8 && awaitingConfirm) {
+      const lc = text.toLowerCase();
+      const yes = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق");
+      if (yes) { addMessage("user", text); setInput(""); void handleAutoRegister(); return; }
+    }
+
+    addMessage("user", text);
+    setInput("");
+    void sendToApi(text, conversationId);
+  };
+
+  const handleAutoRegister = async () => {
+    if (!conversationId) return;
+    setLoading(true);
+    try {
+      const payload = { ...regData, programType: regData.programType || "منح دراسية", conversationId: String(conversationId) };
+      const r = await fetch("/api/nassir/auto-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json() as { success?: boolean; registrationId?: number };
+      if (d.success) {
+        addMessage("assistant", `🎉 **تهانينا! تم تسجيلك بنجاح!**\n\nرقم طلبك: **#${d.registrationId}**\n\nسيتواصل معك فريقنا المتخصص خلال **24 ساعة** على رقم هاتفك المسجّل.\n\n_"الفرصة التي أمّنتها اليوم ستكون نقطة التحوّل في مسيرتك الأكاديمية"_ 🌟`);
+        setAwaitingConfirm(false); setExtractedData(null); setRegStep(0); setRegData({});
+        setShowSuccess(true); setTimeout(() => setShowSuccess(false), 5000);
+      } else {
+        addMessage("assistant", "حدث خطأ أثناء التسجيل. يرجى التواصل المباشر مع فريقنا أو زيارة صفحة التسجيل.");
+      }
+    } catch {
+      addMessage("assistant", "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.");
+    }
+    setLoading(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !conversationId) return;
+    if (!file.type.startsWith("image/")) return;
+    setUploadingImage(true);
+    addMessage("user", `📸 صورة الاستمارة: ${file.name}`);
+    addMessage("assistant", "📋 أقرأ استمارتك الآن بالذكاء الاصطناعي... ثوانٍ فقط ✨");
+    try {
+      const base64 = await fileToBase64(file);
+      const r = await fetch("/api/nassir/vision/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      const data = await r.json() as ExtractedData;
+      setExtractedData(data);
+      const hasData = data.fullName || data.gpa || data.department;
+      if (hasData) {
+        const summary = [data.fullName ? `👤 الاسم: **${data.fullName}**` : null, data.gpa ? `📊 المعدل: **${data.gpa}**` : null, data.department ? `📚 القسم: **${data.department}**` : null, data.city ? `🏙 المدينة: **${data.city}**` : null].filter(Boolean).join("\n");
+        addMessage("assistant", `✅ **استخرجت بياناتك بنجاح!**\n\n${summary}\n\nهل هذه البيانات صحيحة؟ أخبرني بـ "نعم" للمتابعة أو صحّح أي معلومة.`);
+        setRegData({ ...(data as Record<string, string>) });
+        setAwaitingConfirm(true); setRegStep(1);
+      } else {
+        addMessage("assistant", "لم أتمكن من قراءة الاستمارة بوضوح كافٍ.\n\nلا مشكلة! أخبرني **باسمك الكامل** وأنا أكمل معك:");
+        setRegStep(2);
+      }
+    } catch {
+      addMessage("assistant", "حدث خطأ في قراءة الصورة. يمكنك إدخال بياناتك يدوياً — ما **اسمك الكامل**؟");
+      setRegStep(2);
+    }
+    setUploadingImage(false);
+    if (e.target) e.target.value = "";
+  };
+
+  const QUICK_REPLIES = [
+    { label: "🎓 أريد التسجيل الآن", text: "أريد التسجيل في المؤسسة الآن" },
+    { label: "🏛 عرض الجامعات", text: "ما هي الجامعات الشريكة وتخصصاتها؟" },
+    { label: "📊 معدلي وتخصصي", text: "أريد معرفة التخصصات التي يؤهلني لها معدلي" },
+    { label: "💰 المنح والتخفيضات", text: "ما هي المنح والتخفيضات الجامعية المتاحة؟" },
+    { label: "🏥 التأمين الصحي", text: "أريد معلومات عن التأمين الصحي" },
+    { label: "📸 أرفع استمارتي", text: "__UPLOAD__" },
   ];
 
-  function TypingDots() {
-    return (
-      <div className="flex gap-1.5 items-center px-2 py-3">
-        {[0, 150, 300].map((d) => (
-          <span key={d} className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: d + "ms" }} />
-        ))}
-      </div>
-    );
-  }
-
-  function MsgBubble({ msg }: { msg: Msg }) {
-    const isUser = msg.role === "user";
-    const lines = msg.content.split("\n");
-    return (
-      <div className={"flex gap-3 " + (isUser ? "flex-row-reverse" : "flex-row")}>
-        {!isUser && (
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-            <Bot size={18} className="text-white" />
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30" dir="rtl">
+      <div className="container mx-auto max-w-5xl px-4 py-10">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-blue-700 rounded-2xl shadow-xl mb-4">
+            <Bot size={32} className="text-white" />
           </div>
-        )}
-        <div
-          className={"max-w-[75%] md:max-w-[65%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm " +
-            (isUser
-              ? "bg-primary text-white rounded-tr-sm"
-              : "bg-white text-gray-800 rounded-tl-sm border border-gray-100")}
-        >
-          {msg.role === "assistant" && msg.streaming && !msg.content
-            ? <TypingDots />
-            : lines.map((line, i) => <span key={i}>{line}{i < lines.length - 1 && <br />}</span>)}
-          {msg.streaming && msg.content && (
-            <span className="inline-block w-0.5 h-4 bg-gray-400 animate-pulse mr-0.5 align-middle" />
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">ناصر — المستشار الأكاديمي الذكي</h1>
+          <p className="text-slate-500 max-w-xl mx-auto">مساعدك الشخصي الذكي للتوجيه الأكاديمي والتسجيل — متاح 24/7</p>
+          <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
+            {[["15,000+", "طالب مستفيد", GraduationCap], ["16", "جامعة شريكة", BookOpen], ["70%", "أقصى خصم", Star], ["24/7", "متاح دائماً", Heart]].map(([num, label, Icon]) => (
+              <div key={label as string} className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
+                {Icon && <Icon size={16} className="text-primary" />}
+                <span className="font-bold text-primary">{num as string}</span>
+                <span className="text-xs text-slate-500">{label as string}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-800">
+              <Check size={20} className="text-green-600 shrink-0" />
+              <p className="font-semibold">🎉 تم تسجيلك بنجاح! سيتواصل معك فريقنا قريباً.</p>
+            </motion.div>
           )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden" style={{ height: 580 }}>
+            <div className="bg-gradient-to-l from-primary to-blue-700 px-5 py-4 flex items-center gap-3 shrink-0">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Bot size={22} className="text-white" />
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-primary" />
+              </div>
+              <div>
+                <p className="text-white font-bold">ناصر الذكي</p>
+                <p className="text-white/70 text-xs">متاح الآن • يقرأ الاستمارات تلقائياً</p>
+              </div>
+              <div className="mr-auto flex items-center gap-1.5 text-white/80 text-xs bg-white/10 px-3 py-1 rounded-full">
+                <Sparkles size={12} />
+                مدعوم بـ Groq AI
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-gray-50">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-white rounded-bl-sm"
+                      : "bg-white text-gray-800 border border-gray-100 rounded-br-sm"
+                  }`}>
+                    {msg.isTyping ? (
+                      <div className="flex gap-1 items-center py-1">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    ) : (
+                      <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>") }} />
+                    )}
+                  </div>
+                </div>
+              ))}
+              {messages.length === 1 && !loading && (
+                <div className="flex flex-wrap gap-2 justify-end pt-2">
+                  {QUICK_REPLIES.map((qr) => (
+                    <button
+                      key={qr.label}
+                      onClick={() => {
+                        if (qr.text === "__UPLOAD__") { fileInputRef.current?.click(); return; }
+                        addMessage("user", qr.label.slice(2).trim());
+                        void sendToApi(qr.text, conversationId!);
+                      }}
+                      className="text-xs bg-white border border-primary/25 text-primary hover:bg-primary hover:text-white transition-all rounded-full px-3 py-1.5 font-medium shadow-sm"
+                    >
+                      {qr.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {awaitingConfirm && regStep === 8 && (
+                <div className="flex gap-2 justify-end flex-wrap">
+                  <button onClick={() => { void handleAutoRegister(); setAwaitingConfirm(false); }}
+                    className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-5 py-2 text-sm font-bold flex items-center gap-2">
+                    <Check size={16} /> تأكيد التسجيل النهائي
+                  </button>
+                  <button onClick={() => { setRegStep(0); setAwaitingConfirm(false); setExtractedData(null); addMessage("assistant", "لا مشكلة! كيف يمكنني مساعدتك؟"); }}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm">
+                    إلغاء
+                  </button>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="bg-white border-t border-gray-100 px-4 py-3 shrink-0">
+              <div className="flex items-end gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  title="إرسال صورة الاستمارة للتسجيل التلقائي"
+                  className="shrink-0 w-10 h-10 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-colors"
+                >
+                  {uploadingImage ? <Loader2 size={17} className="text-amber-600 animate-spin" /> : <ImageIcon size={17} className="text-amber-600" />}
+                </button>
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="اسأل ناصر عن أي شيء — تخصصات، جامعات، تسجيل..."
+                  rows={1}
+                  disabled={loading || uploadingImage}
+                  className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-50"
+                  style={{ maxHeight: 90 }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || loading || uploadingImage}
+                  className="shrink-0 w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center text-white disabled:opacity-40 transition-colors"
+                >
+                  <Send size={17} className="rotate-180" />
+                </button>
+              </div>
+              <p className="text-center text-xs text-slate-400 mt-2">اضغط 📎 لرفع صورة استمارتك وسيعبّئ ناصر بياناتك تلقائياً</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
+                <GraduationCap size={16} className="text-primary" /> ما يمكن لناصر فعله
+              </h3>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "📸", text: "يقرأ استمارتك ويسجّلك تلقائياً" },
+                  { icon: "🏛", text: "معلومات كاملة عن 16 جامعة" },
+                  { icon: "📊", text: "يحدد تخصصك بناءً على معدلك" },
+                  { icon: "🎓", text: "يجد أفضل المنح والتخفيضات لك" },
+                  { icon: "💬", text: "متاح 24/7 للإجابة على أسئلتك" },
+                ].map((item) => (
+                  <div key={item.text} className="flex items-start gap-2 text-xs text-slate-600">
+                    <span>{item.icon}</span>
+                    <span>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
+              <h3 className="font-bold text-amber-800 mb-2 text-sm">⚡ تسجيل سريع</h3>
+              <p className="text-xs text-amber-700 mb-3 leading-relaxed">أرسل صورة استمارة ثانويتك وسيعبّئ ناصر بياناتك تلقائياً في ثوانٍ!</p>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl py-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <Upload size={14} /> أرفع استمارتي الآن
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
+                <BookOpen size={16} className="text-primary" /> أسئلة شائعة
+              </h3>
+              <div className="space-y-2">
+                {[
+                  "ما معدلي المطلوب لطب؟",
+                  "ما أفضل جامعة للهندسة؟",
+                  "كيف أحصل على منحة كاملة؟",
+                  "ما مميزات التأمين الصحي؟",
+                ].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => { if (!conversationId) return; addMessage("user", q); void sendToApi(q, conversationId); }}
+                    className="w-full text-right text-xs text-primary hover:text-primary/80 border border-primary/20 hover:border-primary/40 hover:bg-primary/5 rounded-lg px-3 py-2 transition-all"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    );
-  }
 
-  export default function NassirPage() {
-    const [msgs, setMsgs] = useState<Msg[]>([]);
-    const [input, setInput] = useState("");
-    const [convId, setConvId] = useState<number | null>(null);
-    const [isTyping, setIsTyping] = useState(false);
-    const [initialized, setInitialized] = useState(false);
-    const [menuUsed, setMenuUsed] = useState(false);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const msgIdRef = useRef(0);
-    const nextId = () => String(++msgIdRef.current);
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+    </div>
+  );
+}
 
-    useEffect(() => { document.title = "ناصر مساعدك الذكي | المؤسسة الوطنية"; }, []);
-
-    const scrollToBottom = useCallback(() => {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-      }, 60);
-    }, []);
-
-    useEffect(() => { if (msgs.length) scrollToBottom(); }, [msgs, scrollToBottom]);
-
-    useEffect(() => {
-      (async () => {
-        try {
-          const [settingsRes, convoRes] = await Promise.all([
-            fetch(BASE + "/api/nassir/settings"),
-            fetch(BASE + "/api/nassir/conversations", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ platform: "web" }),
-            }),
-          ]);
-          const settings = settingsRes.ok ? await settingsRes.json() : null;
-          const convo = convoRes.ok ? await convoRes.json() : null;
-          if (convo?.id) setConvId(convo.id);
-          const welcome = settings?.welcomeMessage || "مرحباً! أنا ناصر مساعدك الذكي 👋\nاختر من القائمة أو اكتب سؤالك مباشرة.";
-          setMsgs([{ id: nextId(), role: "assistant", content: welcome }]);
-          setInitialized(true);
-        } catch {
-          setMsgs([{ id: nextId(), role: "assistant", content: "مرحباً! أنا ناصر مساعدك الذكي 👋\nكيف يمكنني مساعدتك؟" }]);
-          setInitialized(true);
-        }
-      })();
-    }, []);
-
-    const sendMessage = useCallback(async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || isTyping || !convId) return;
-      setInput("");
-      setMenuUsed(true);
-      setMsgs((prev) => [...prev, { id: nextId(), role: "user", content: trimmed }]);
-      setIsTyping(true);
-      const assistantId = nextId();
-      setMsgs((prev) => [...prev, { id: assistantId, role: "assistant", content: "", streaming: true }]);
-
-      try {
-        const res = await fetch(BASE + "/api/nassir/conversations/" + convId + "/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: trimmed }),
-        });
-        if (!res.body) throw new Error("No body");
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullText = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (!line.startsWith("data:")) continue;
-            try {
-              const parsed = JSON.parse(line.slice(5).trim());
-              if (parsed.content) {
-                fullText += parsed.content;
-                setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText, streaming: true } : m));
-              }
-              if (parsed.done) setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, streaming: false } : m));
-            } catch {}
-          }
-        }
-      } catch {
-        setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "عذراً، حدث خطأ. حاول مرة أخرى.", streaming: false } : m));
-      } finally {
-        setIsTyping(false);
-      }
-    }, [convId, isTyping]);
-
-    return (
-      <Layout>
-        <div dir="rtl" className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-
-          {/* ── Hero ── */}
-          <section className="bg-gradient-to-br from-primary via-primary to-primary/80 text-white py-10 px-4">
-            <div className="container mx-auto max-w-3xl text-center">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
-                  <Bot size={32} className="text-white" />
-                </div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold mb-2 tracking-tight">ناصر مساعدك الذكي</h1>
-              <p className="text-white/80 text-base md:text-lg">المؤسسة الوطنية للتنمية الشاملة</p>
-              <div className="flex items-center justify-center gap-2 mt-3">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-white/70 text-sm">متاح الآن · يرد فوراً</span>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Interactive Menu ── */}
-          <section className="py-6 px-4 border-b border-gray-100 bg-white">
-            <div className="container mx-auto max-w-3xl">
-              <p className="text-center text-sm text-gray-500 mb-4 font-medium">اختر موضوعاً أو اكتب سؤالك مباشرة</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                {MENU_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => { sendMessage(item.msg); setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), 100); }}
-                      disabled={isTyping || !convId}
-                      className={"flex items-center gap-2.5 px-3 py-3 rounded-xl border text-sm font-semibold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 text-right " + item.color}
-                    >
-                      <Icon size={18} className="shrink-0" />
-                      <span className="leading-tight">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* ── Chat ── */}
-          <section className="py-4 px-4">
-            <div className="container mx-auto max-w-3xl flex flex-col" style={{ height: "calc(100vh - 420px)", minHeight: "380px" }}>
-
-              {/* Messages */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 px-1 py-2">
-                {!initialized && (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="animate-spin text-primary/40" size={28} />
-                  </div>
-                )}
-                {msgs.map((msg) => <MsgBubble key={msg.id} msg={msg} />)}
-              </div>
-
-              {/* Input */}
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <form
-                  onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-                  className="flex gap-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-2"
-                >
-                  <button
-                    type="submit"
-                    disabled={!input.trim() || isTyping || !convId}
-                    className="w-10 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all"
-                  >
-                    <Send size={16} />
-                  </button>
-                  <input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }}}
-                    placeholder="اكتب سؤالك هنا..."
-                    disabled={isTyping || !convId}
-                    className="flex-1 text-sm bg-transparent border-none outline-none text-right placeholder:text-gray-400 disabled:opacity-60 px-2"
-                  />
-                  {isTyping && <Loader2 size={16} className="animate-spin text-primary/50 self-center ml-2 shrink-0" />}
-                </form>
-                <p className="text-center text-xs text-gray-400 mt-2">
-                  مدعوم بـ Groq AI · <span className="text-primary">ناصر مساعدك الذكي</span>
-                </p>
-              </div>
-            </div>
-          </section>
-
-        </div>
-      </Layout>
-    );
-  }
-  
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => { const result = reader.result as string; resolve(result.split(",")[1] ?? ""); };
+    reader.onerror = reject;
+  });
+}

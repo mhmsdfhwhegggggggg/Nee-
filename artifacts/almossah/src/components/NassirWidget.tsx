@@ -1,242 +1,532 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-  import { X, Send, Bot, Loader2, ChevronDown } from "lucide-react";
-  import { Link } from "wouter";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Send, Bot, ChevronDown, Upload, Check, Loader2, ImageIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-  const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") || "";
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  isTyping?: boolean;
+}
 
-  interface Msg {
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-    streaming?: boolean;
-  }
+interface ExtractedData {
+  fullName?: string;
+  gpa?: string;
+  department?: string;
+  city?: string;
+  notes?: string;
+}
 
-  const QUICK_REPLIES = [
-    "ما هي خدمات المؤسسة؟",
-    "كيف أتقدم للمنح الدراسية؟",
-    "ما هي الجامعات المتاحة؟",
-    "كيف يمكنني التواصل معكم؟",
-  ];
+const REGISTRATION_MODE_PATHS = ["/register", "/training-register"];
 
-  function TypingDots() {
-    return (
-      <div className="flex gap-1 items-center px-1 py-2">
-        {[0, 150, 300].map((d) => (
-          <span key={d} className="w-2 h-2 rounded-full bg-primary/50 animate-bounce" style={{ animationDelay: d + "ms" }} />
-        ))}
-      </div>
-    );
-  }
+const QUICK_REPLIES_DEFAULT = [
+  { label: "🎓 المنح الدراسية", text: "أريد معرفة تفاصيل المنح الدراسية المتاحة" },
+  { label: "📚 التخفيضات", text: "ما هي التخفيضات الجامعية المتاحة؟" },
+  { label: "🏥 التأمين الصحي", text: "أريد معرفة تفاصيل التأمين الصحي" },
+  { label: "📝 التسجيل", text: "كيف أسجّل في المؤسسة؟" },
+];
 
-  export function NassirWidget() {
-    const [open, setOpen] = useState(false);
-    const [msgs, setMsgs] = useState<Msg[]>([]);
-    const [input, setInput] = useState("");
-    const [convId, setConvId] = useState<number | null>(null);
-    const [isTyping, setIsTyping] = useState(false);
-    const [initialized, setInitialized] = useState(false);
-    const [showQuick, setShowQuick] = useState(true);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const msgIdRef = useRef(0);
-    const nextId = () => String(++msgIdRef.current);
+const QUICK_REPLIES_REGISTER = [
+  { label: "📸 أرسل صورة الاستمارة", text: "__UPLOAD_IMAGE__" },
+  { label: "✍️ أدخل بياناتي يدوياً", text: "أريد إدخال بياناتي يدوياً للتسجيل" },
+  { label: "❓ ما هي المستندات المطلوبة؟", text: "ما هي المستندات والمتطلبات للتسجيل؟" },
+];
 
-    const scrollToBottom = useCallback(() => {
-      setTimeout(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, 50);
-    }, []);
+export function NassirWidget() {
+  const [location] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState(0);
+  const [regData, setRegData] = useState<Record<string, string>>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showImageSuccess, setShowImageSuccess] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isRegisterPage = REGISTRATION_MODE_PATHS.includes(location);
 
-    useEffect(() => { if (msgs.length) scrollToBottom(); }, [msgs, scrollToBottom]);
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
-    const initChat = useCallback(async () => {
-      if (initialized) return;
-      setInitialized(true);
-      try {
-        const [settingsRes, convoRes] = await Promise.all([
-          fetch(BASE + "/api/nassir/settings"),
-          fetch(BASE + "/api/nassir/conversations", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ platform: "web" }),
-          }),
-        ]);
-        const settings = settingsRes.ok ? await settingsRes.json() : null;
-        const convo = convoRes.ok ? await convoRes.json() : null;
-        if (convo?.id) setConvId(convo.id);
-        const welcome = settings?.welcomeMessage || "مرحباً! أنا ناصر مساعدك الذكي 👋\nكيف يمكنني مساعدتك اليوم؟";
-        setMsgs([{ id: nextId(), role: "assistant", content: welcome }]);
-      } catch {
-        setMsgs([{ id: nextId(), role: "assistant", content: "مرحباً! أنا ناصر مساعدك الذكي 👋" }]);
-      }
-    }, [initialized]);
+  const createConversation = useCallback(async () => {
+    const r = await fetch("/api/nassir/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform: "web" }),
+    });
+    const d = await r.json() as { id: number };
+    setConversationId(d.id);
+    return d.id;
+  }, []);
 
-    const handleOpen = () => {
-      setOpen(true);
-      if (!initialized) initChat();
-      setTimeout(() => inputRef.current?.focus(), 300);
-    };
+  const addMessage = (role: "user" | "assistant", content: string) => {
+    const id = Math.random().toString(36).slice(2);
+    setMessages((prev) => [...prev, { id, role, content }]);
+    return id;
+  };
 
-    const sendMessage = useCallback(async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || isTyping || !convId) return;
-      setInput("");
-      setShowQuick(false);
-      setMsgs((prev) => [...prev, { id: nextId(), role: "user", content: trimmed }]);
-      setIsTyping(true);
-      const assistantId = nextId();
-      setMsgs((prev) => [...prev, { id: assistantId, role: "assistant", content: "", streaming: true }]);
+  const openWidget = async () => {
+    setOpen(true);
+    if (messages.length > 0) return;
+    setLoading(true);
+    const cid = await createConversation();
 
-      try {
-        const res = await fetch(BASE + "/api/nassir/conversations/" + convId + "/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: trimmed }),
-        });
-        if (!res.body) throw new Error("No body");
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullText = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (!line.startsWith("data:")) continue;
-            try {
-              const parsed = JSON.parse(line.slice(5).trim());
-              if (parsed.content) {
-                fullText += parsed.content;
-                setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: fullText, streaming: true } : m));
-              }
-              if (parsed.done) setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, streaming: false } : m));
-            } catch {}
-          }
-        }
-      } catch {
-        setMsgs((prev) => prev.map((m) => m.id === assistantId ? { ...m, content: "عذراً، حدث خطأ. حاول مرة أخرى.", streaming: false } : m));
-      } finally {
-        setIsTyping(false);
-      }
-    }, [convId, isTyping]);
-
-    function renderContent(content: string) {
-      return content.split("\n").map((line, i) => <span key={i}>{line}{i < content.split("\n").length - 1 && <br />}</span>);
+    let welcome = "";
+    if (isRegisterPage) {
+      welcome = `مرحباً بك في خطوة نحو مستقبلك! 🎓\n\nأنا **ناصر**، مستشارك الأكاديمي الشخصي.\n\nأنت على بعد دقيقة واحدة من إتمام تسجيلك. لدي طريقتان لمساعدتك:\n\n📸 **الأسرع:** أرسل صورة استمارة ثانويتك وسأملأ كل شيء تلقائياً في ثوانٍ!\n\n✍️ **أو:** أدخل بياناتك وأنا أرشدك خطوة بخطوة.\n\nأكثر من **15,000 طالب** سجّلوا بنفس الطريقة — أنت القادم! 🌟`;
+    } else {
+      welcome = `مرحباً بك في المؤسسة الوطنية للتنمية الشاملة! 👋\n\nأنا **ناصر**، مستشارك الأكاديمي الذكي — هنا 24/7 لخدمتك.\n\nيمكنني مساعدتك في:\n🎓 المنح الدراسية والتخفيضات\n🏥 التأمين الصحي\n💡 الدورات التدريبية\n📝 إتمام التسجيل بسهولة\n\nكيف يمكنني مساعدتك اليوم؟`;
     }
 
-    return (
-      <>
-        {/* Floating button */}
-        <div className="fixed bottom-6 left-6 z-50 flex flex-col items-end gap-2">
-          {!open && (
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
-              <button
-                onClick={handleOpen}
-                aria-label="افتح ناصر مساعدك الذكي"
-                className="relative flex items-center gap-2 bg-primary hover:bg-primary/90 text-white rounded-full px-4 py-3 shadow-xl transition-all hover:scale-105 active:scale-95 font-medium text-sm"
-              >
-                <Bot size={20} />
-                <span>ناصر مساعدك الذكي</span>
-              </button>
-            </div>
-          )}
-          {open && (
-            <button
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-800 text-white rounded-full px-3 py-2 shadow-lg text-xs transition-all"
-            >
-              <ChevronDown size={14} />
-              <span>إغلاق</span>
-            </button>
-          )}
-        </div>
+    addMessage("assistant", welcome);
+    setLoading(false);
+    void cid;
+  };
 
-        {/* Chat window */}
+  const sendMessage = async (text: string, cid?: number) => {
+    if (!text.trim()) return;
+    const id = cid || conversationId;
+    if (!id) return;
+
+    addMessage("user", text);
+    setInput("");
+    setLoading(true);
+
+    const typingId = Math.random().toString(36).slice(2);
+    setMessages((prev) => [...prev, { id: typingId, role: "assistant", content: "", isTyping: true }]);
+
+    try {
+      const r = await fetch(`/api/nassir/conversations/${id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+
+      setMessages((prev) => prev.filter((m) => m.id !== typingId));
+
+      if (!r.body) { setLoading(false); return; }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+      const msgId = Math.random().toString(36).slice(2);
+      setMessages((prev) => [...prev, { id: msgId, role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6)) as { content?: string; done?: boolean };
+            if (data.content) {
+              full += data.content;
+              setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: full } : m));
+            }
+          } catch {}
+        }
+      }
+    } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== typingId));
+      addMessage("assistant", "عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.");
+    }
+    setLoading(false);
+  };
+
+  const handleQuickReply = (text: string) => {
+    if (text === "__UPLOAD_IMAGE__") {
+      fileInputRef.current?.click();
+      return;
+    }
+    void sendMessage(text);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !conversationId) return;
+    if (!file.type.startsWith("image/")) return;
+
+    setUploadingImage(true);
+    addMessage("user", `📸 إرسال صورة الاستمارة: ${file.name}`);
+
+    try {
+      const base64 = await fileToBase64(file);
+      addMessage("assistant", "📋 جاري قراءة استمارتك... لحظة من فضلك ✨");
+
+      const r = await fetch("/api/nassir/vision/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      });
+      const data = await r.json() as ExtractedData;
+
+      setExtractedData(data);
+      setUploadingImage(false);
+      setShowImageSuccess(true);
+      setTimeout(() => setShowImageSuccess(false), 3000);
+
+      const hasData = data.fullName || data.gpa || data.department;
+      if (hasData) {
+        const summary = [
+          data.fullName ? `👤 الاسم: **${data.fullName}**` : null,
+          data.gpa ? `📊 المعدل: **${data.gpa}**` : null,
+          data.department ? `📚 القسم: **${data.department}**` : null,
+          data.city ? `🏙 المدينة: **${data.city}**` : null,
+        ].filter(Boolean).join("\n");
+
+        addMessage("assistant", `✅ ممتاز! استخرجت بياناتك بنجاح:\n\n${summary}\n\nهل هذه البيانات صحيحة؟ سأحتاج أيضاً إلى **رقم هاتفك** لإتمام التسجيل.`);
+        setAwaitingConfirm(true);
+        setRegData({ ...data } as Record<string, string>);
+        setRegistrationStep(1);
+      } else {
+        addMessage("assistant", "لم أتمكن من قراءة الاستمارة بوضوح كافٍ.\n\nلا مشكلة! يمكنك إخباري ببياناتك مباشرة:\n**ما اسمك الكامل؟**");
+        setRegistrationStep(2);
+      }
+    } catch {
+      setUploadingImage(false);
+      addMessage("assistant", "حدث خطأ أثناء قراءة الصورة. يرجى المحاولة مرة أخرى أو إدخال بياناتك يدوياً.");
+    }
+
+    if (e.target) e.target.value = "";
+  };
+
+  const handleAutoRegister = async () => {
+    if (!conversationId || !extractedData) return;
+    setLoading(true);
+    try {
+      const r = await fetch("/api/nassir/auto-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...regData,
+          programType: regData.programType || "scholarship",
+          conversationId: String(conversationId),
+        }),
+      });
+      const d = await r.json() as { success?: boolean; registrationId?: number; error?: string };
+      if (d.success) {
+        addMessage("assistant", `🎉 **تم تسجيلك بنجاح!**\n\nرقم طلبك: **#${d.registrationId}**\n\nسيتواصل معك فريقنا قريباً على رقم هاتفك المسجّل.\n\nنتمنى لك مسيرة أكاديمية موفقة! 🌟`);
+        setAwaitingConfirm(false);
+        setExtractedData(null);
+        setRegistrationStep(0);
+        setRegData({});
+      } else {
+        addMessage("assistant", "حدث خطأ أثناء التسجيل. يرجى زيارة صفحة التسجيل مباشرة أو التواصل مع الفريق.");
+      }
+    } catch {
+      addMessage("assistant", "حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.");
+    }
+    setLoading(false);
+  };
+
+  const handleSend = () => {
+    if (!input.trim() || !conversationId) return;
+
+    if (awaitingConfirm && registrationStep === 1) {
+      const lc = input.toLowerCase();
+      const confirmed = lc.includes("نعم") || lc.includes("صح") || lc.includes("صحيح") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("yes");
+      if (confirmed) {
+        addMessage("user", input);
+        setInput("");
+        addMessage("assistant", "رائع! 🎊 آخر خطوة — ما **رقم هاتفك** حتى يتواصل معك فريقنا؟");
+        setRegistrationStep(3);
+        setAwaitingConfirm(false);
+        return;
+      }
+      const denied = lc.includes("لا") || lc.includes("خطأ") || lc.includes("غلط") || lc.includes("no");
+      if (denied) {
+        addMessage("user", input);
+        setInput("");
+        addMessage("assistant", "لا مشكلة! أخبرني ببياناتك الصحيحة:\n**ما اسمك الكامل؟**");
+        setAwaitingConfirm(false);
+        setRegistrationStep(2);
+        return;
+      }
+    }
+
+    if (registrationStep === 2) {
+      const text = input.trim();
+      addMessage("user", text);
+      setInput("");
+      setRegData((prev) => ({ ...prev, fullName: text }));
+      addMessage("assistant", `شكراً ${text}! 😊\n\n**ما هو معدلك في الثانوية؟** (مثال: 85% أو 425 درجة)`);
+      setRegistrationStep(4);
+      return;
+    }
+
+    if (registrationStep === 4) {
+      const text = input.trim();
+      addMessage("user", text);
+      setInput("");
+      setRegData((prev) => ({ ...prev, gpa: text }));
+      addMessage("assistant", `ممتاز! 📊\n\n**ما قسمك؟** (علمي / أدبي)`);
+      setRegistrationStep(5);
+      return;
+    }
+
+    if (registrationStep === 5) {
+      const text = input.trim();
+      addMessage("user", text);
+      setInput("");
+      setRegData((prev) => ({ ...prev, department: text }));
+      addMessage("assistant", `👍\n\n**من أي مدينة أو محافظة أنت؟**`);
+      setRegistrationStep(6);
+      return;
+    }
+
+    if (registrationStep === 6) {
+      const text = input.trim();
+      addMessage("user", text);
+      setInput("");
+      setRegData((prev) => ({ ...prev, city: text }));
+      addMessage("assistant", `الآن آخر شيء — **رقم هاتفك** لإتمام التسجيل:`);
+      setRegistrationStep(3);
+      return;
+    }
+
+    if (registrationStep === 3) {
+      const phone = input.trim();
+      if (phone.length < 9) {
+        addMessage("user", input);
+        setInput("");
+        addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل).");
+        return;
+      }
+      addMessage("user", phone);
+      setInput("");
+      const fullRegData = { ...regData, phone };
+      setRegData(fullRegData);
+
+      const programOptions = `أي برنامج يهمك؟\n\n1️⃣ **منحة دراسية كاملة**\n2️⃣ **تخفيض جامعي**\n3️⃣ **دورة تدريبية**\n4️⃣ **تأمين صحي**`;
+      addMessage("assistant", programOptions);
+      setRegistrationStep(7);
+      return;
+    }
+
+    if (registrationStep === 7) {
+      const text = input.trim();
+      addMessage("user", text);
+      setInput("");
+      let programType = "scholarship";
+      if (text.includes("2") || text.includes("تخفيض")) programType = "discount";
+      else if (text.includes("3") || text.includes("دورة")) programType = "training";
+      else if (text.includes("4") || text.includes("تأمين")) programType = "insurance";
+
+      const finalData = { ...regData, programType };
+      setRegData(finalData);
+      setExtractedData(finalData as ExtractedData);
+      setRegistrationStep(8);
+
+      const summary = [
+        finalData.fullName ? `👤 الاسم: **${finalData.fullName}**` : null,
+        finalData.phone ? `📱 الهاتف: **${finalData.phone}**` : null,
+        finalData.gpa ? `📊 المعدل: **${finalData.gpa}**` : null,
+        finalData.department ? `📚 القسم: **${finalData.department}**` : null,
+        finalData.city ? `🏙 المدينة: **${finalData.city}**` : null,
+        `🎯 البرنامج: **${programType === "scholarship" ? "منحة دراسية" : programType === "discount" ? "تخفيض جامعي" : programType === "training" ? "دورة تدريبية" : "تأمين صحي"}**`,
+      ].filter(Boolean).join("\n");
+
+      addMessage("assistant", `✅ **ملخص طلب تسجيلك:**\n\n${summary}\n\nهل تؤكد التسجيل بهذه البيانات؟`);
+      setAwaitingConfirm(true);
+      return;
+    }
+
+    if (registrationStep === 8 && awaitingConfirm) {
+      const lc = input.toLowerCase();
+      const confirmed = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("yes");
+      if (confirmed) {
+        addMessage("user", input);
+        setInput("");
+        void handleAutoRegister();
+        return;
+      }
+    }
+
+    void sendMessage(input);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageUpload}
+      />
+
+      <AnimatePresence>
         {open && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-24 left-4 right-4 sm:right-auto sm:left-6 sm:w-[380px] z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-white/20"
+            style={{ maxHeight: "calc(100vh - 120px)", height: 540 }}
             dir="rtl"
-            className="fixed bottom-20 left-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
-            style={{ height: "520px" }}
           >
-            {/* Header */}
-            <div className="bg-primary px-4 py-3 flex items-center gap-3 shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                <Bot size={20} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">ناصر مساعدك الذكي</p>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
-                  <p className="text-white/70 text-xs">متاح الآن</p>
-                </div>
-              </div>
-              <Link href="/nassir">
-                <button
-                  onClick={() => setOpen(false)}
-                  className="text-white/70 hover:text-white text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded-lg transition-colors shrink-0"
-                >
-                  صفحة كاملة ↗
-                </button>
-              </Link>
-              <button onClick={() => setOpen(false)} className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-              {msgs.length === 0 && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-gray-300" size={24} /></div>}
-              {msgs.map((msg) => (
-                <div key={msg.id} className={"flex gap-2 " + (msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-                  {msg.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <Bot size={16} className="text-primary" />
-                    </div>
-                  )}
-                  <div className={"max-w-[78%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm " +
-                    (msg.role === "user" ? "bg-primary text-white rounded-tr-sm" : "bg-white text-gray-800 rounded-tl-sm border border-gray-100")}>
-                    {msg.role === "assistant" && msg.streaming && !msg.content
-                      ? <TypingDots />
-                      : renderContent(msg.content)}
-                    {msg.streaming && msg.content && <span className="inline-block w-0.5 h-3.5 bg-gray-400 animate-pulse ml-0.5 align-middle" />}
+            <div className="bg-gradient-to-l from-primary to-blue-700 px-4 py-3 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                    <Bot size={20} className="text-white" />
                   </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-primary" />
                 </div>
-              ))}
+                <div>
+                  <p className="text-white font-bold text-sm leading-tight">ناصر</p>
+                  <p className="text-white/75 text-xs">المستشار الأكاديمي الذكي • متاح الآن</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" className="text-white/80 hover:text-white hover:bg-white/20 h-8 w-8" onClick={() => setOpen(false)}>
+                <X size={18} />
+              </Button>
             </div>
 
-            {/* Quick replies */}
-            {showQuick && msgs.length <= 1 && !isTyping && (
-              <div className="px-3 py-2 flex flex-wrap gap-1.5 bg-gray-50 border-t border-gray-100 shrink-0">
-                {QUICK_REPLIES.map((q) => (
-                  <button key={q} onClick={() => sendMessage(q)}
-                    className="text-xs bg-white border border-primary/30 text-primary hover:bg-primary hover:text-white px-2.5 py-1 rounded-full transition-colors whitespace-nowrap">
-                    {q}
-                  </button>
-                ))}
+            {isRegisterPage && (
+              <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 shrink-0">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                <p className="text-amber-800 text-xs font-semibold">وضع مساعد التسجيل الذكي — سأملأ الاستمارة عنك! 🚀</p>
               </div>
             )}
 
-            {/* Input */}
-            <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex gap-2 p-3 border-t border-gray-100 bg-white shrink-0">
-              <button type="submit" disabled={!input.trim() || isTyping || !convId}
-                className="w-9 h-9 rounded-xl bg-primary hover:bg-primary/90 text-white flex items-center justify-center shrink-0 disabled:opacity-40 transition-all">
-                <Send size={16} />
-              </button>
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="اكتب رسالتك..."
-                disabled={isTyping || !convId}
-                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-gray-50 disabled:opacity-60 text-right"
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }}}
-              />
-            </form>
-          </div>
+            <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-3 space-y-3">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-primary text-white rounded-bl-sm"
+                      : "bg-white text-gray-800 shadow-sm border border-gray-100 rounded-br-sm"
+                  }`}>
+                    {msg.isTyping ? (
+                      <div className="flex gap-1 items-center py-1 px-1">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    ) : (
+                      <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {messages.length > 0 && !loading && !awaitingConfirm && (
+                <div className="flex flex-wrap gap-2 justify-end pt-1">
+                  {(isRegisterPage && messages.length <= 2 ? QUICK_REPLIES_REGISTER : QUICK_REPLIES_DEFAULT).map((qr) => (
+                    <button
+                      key={qr.label}
+                      onClick={() => handleQuickReply(qr.text)}
+                      className="text-xs bg-white border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors rounded-full px-3 py-1.5 font-medium"
+                    >
+                      {qr.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {awaitingConfirm && registrationStep === 8 && (
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => { void handleAutoRegister(); setAwaitingConfirm(false); }}
+                    className="text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 font-bold flex items-center gap-1"
+                  >
+                    <Check size={16} /> تأكيد التسجيل
+                  </button>
+                  <button
+                    onClick={() => { setRegistrationStep(0); setAwaitingConfirm(false); setExtractedData(null); addMessage("assistant", "لا مشكلة! يمكنك البدء من جديد. كيف يمكنني مساعدتك؟"); }}
+                    className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-3 py-2"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="bg-white border-t border-gray-100 px-3 py-3 shrink-0">
+              <div className="flex items-end gap-2">
+                {isRegisterPage && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="shrink-0 w-9 h-9 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-colors"
+                    title="إرسال صورة الاستمارة"
+                  >
+                    {uploadingImage ? <Loader2 size={16} className="text-amber-600 animate-spin" /> : showImageSuccess ? <Check size={16} className="text-green-600" /> : <ImageIcon size={16} className="text-amber-600" />}
+                  </button>
+                )}
+                <div className="flex-1 relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={isRegisterPage ? "اكتب هنا أو أرسل صورة الاستمارة..." : "اكتب سؤالك هنا..."}
+                    rows={1}
+                    disabled={loading || uploadingImage}
+                    className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-50 placeholder:text-gray-400"
+                    style={{ maxHeight: 80 }}
+                  />
+                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || loading || uploadingImage}
+                  className="shrink-0 w-9 h-9 rounded-xl bg-primary hover:bg-primary/90 flex items-center justify-center text-white disabled:opacity-40 transition-colors"
+                >
+                  <Send size={16} className="rotate-180" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
-      </>
-    );
-  }
-  
+      </AnimatePresence>
+
+      <motion.button
+        onClick={() => { if (!open) { void openWidget(); } else { setOpen(false); } }}
+        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-xl flex items-center justify-center text-white"
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+              <ChevronDown size={24} />
+            </motion.div>
+          ) : (
+            <motion.div key="bot" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
+              <Bot size={26} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {!open && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse" />
+        )}
+      </motion.button>
+    </>
+  );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+  });
+}
