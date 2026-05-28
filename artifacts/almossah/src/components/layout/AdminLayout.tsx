@@ -1,8 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { useGetAdminMe } from "@workspace/api-client-react";
-import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -19,11 +19,51 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ── Real-time notification badge ────────────────────────────────────────────
+  const [newRegCount, setNewRegCount] = useState(0);
+  const lastTotalRef = useRef<number | null>(null);
+  const lastPendingRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!isLoading && (isError || !user) && !hasToken) {
-      setLocation("/admin/login");
+    if (!hasToken) return;
+
+    const check = async () => {
+      try {
+        const token = getAdminToken();
+        const r = await fetch("/api/admin/dashboard", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
+        });
+        if (!r.ok) return;
+        const data = await r.json() as { totalRegistrations?: number; pendingRegistrations?: number };
+        const total = data.totalRegistrations ?? 0;
+        const pending = data.pendingRegistrations ?? 0;
+
+        if (lastTotalRef.current !== null && total > lastTotalRef.current) {
+          const diff = total - lastTotalRef.current;
+          setNewRegCount((c) => c + diff);
+          // Play a subtle browser notification sound if permission granted
+          if (Notification.permission === "granted") {
+            new Notification("🔔 تسجيل جديد عبر ناصر", {
+              body: `وصل ${diff} طلب${diff > 1 ? "ات" : ""} تسجيل جديد`,
+              icon: "/logo.png",
+            });
+          }
+        }
+        lastTotalRef.current = total;
+        lastPendingRef.current = pending;
+      } catch {}
+    };
+
+    // Request notification permission once
+    if (Notification.permission === "default") {
+      void Notification.requestPermission();
     }
-  }, [isLoading, isError, user, hasToken, setLocation]);
+
+    void check();
+    const interval = setInterval(check, 20000); // every 20 seconds
+    return () => clearInterval(interval);
+  }, [hasToken]);
 
   const handleLogout = async () => {
     try {
@@ -96,13 +136,44 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </Button>
       </div>
 
-      <aside className={`fixed inset-y-0 right-0 z-40 w-64 bg-slate-900 text-white transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col`}>
-        <div className="p-5 flex items-center gap-3 border-b border-slate-800 shrink-0">
-          <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
-            <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      {/* Notification bell — top left on mobile, visible in sidebar header on desktop */}
+      {newRegCount > 0 && (
+        <Link href="/admin/registrations">
+          <div
+            className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-full shadow-lg cursor-pointer hover:bg-primary/90 transition-colors lg:hidden"
+            onClick={() => setNewRegCount(0)}
+          >
+            <Bell size={16} className="animate-bounce" />
+            <span className="text-xs font-bold">{newRegCount} جديد</span>
           </div>
-          <span className="font-bold text-base leading-tight">لوحة الإدارة</span>
+        </Link>
+      )}
+
+      <aside className={`fixed inset-y-0 right-0 z-40 w-64 bg-slate-900 text-white transform ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col`}>
+        <div className="p-5 flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+              <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            </div>
+            <span className="font-bold text-base leading-tight">لوحة الإدارة</span>
+          </div>
+
+          {/* Notification bell in sidebar */}
+          {newRegCount > 0 && (
+            <Link href="/admin/registrations">
+              <button
+                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-amber-500/20 hover:bg-amber-500/30 transition-colors"
+                onClick={() => { setNewRegCount(0); setSidebarOpen(false); }}
+                title={`${newRegCount} طلب جديد عبر ناصر`}
+              >
+                <Bell size={18} className="text-amber-400 animate-bounce" />
+                <span className="absolute -top-1 -left-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
+                  {newRegCount > 99 ? "99+" : newRegCount}
+                </span>
+              </button>
+            </Link>
+          )}
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -111,6 +182,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors text-sm ${location === item.href ? 'bg-primary text-white font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}>
                 {item.icon}
                 <span>{item.label}</span>
+                {item.href === "/admin/registrations" && newRegCount > 0 && (
+                  <span className="mr-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {newRegCount}
+                  </span>
+                )}
               </div>
             </Link>
           ))}
