@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getOrCreateConversation, processMessage } from "../../lib/chatHelper";
+import { getOrCreateConversation, processMessageFull } from "../../lib/chatHelper";
 
 const router = Router();
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "almossah_nassir_2024";
@@ -38,10 +38,7 @@ router.post("/nassir/webhooks/facebook", async (req, res) => {
   } catch {}
 });
 
-const MENU_TEXT = `🏛 *المؤسسة الوطنية للتنمية الشاملة*
-أنا ناصر، مستشارك الأكاديمي الذكي 👋
-
-ماذا يمكنني أن أفعل لك اليوم؟`;
+const MENU_TEXT = `🏛 المؤسسة الوطنية للتنمية الشاملة\nأنا ناصر، مستشارك الأكاديمي الذكي 👋\n\nأخبرني بتخصصك ومعدلك وسأجد لك أفضل فرصة جامعية!`;
 
 const QUICK_REPLIES = [
   { content_type: "text", title: "🎓 المنح الدراسية", payload: "grants" },
@@ -53,69 +50,12 @@ const QUICK_REPLIES = [
 ];
 
 const MENU_RESPONSES: Record<string, string> = {
-  grants: `🎓 *المنح الدراسية الكاملة*
-
-أكثر من *15,000 طالب* وثقوا بنا وحققوا أحلامهم الأكاديمية.
-
-✅ تغطية كاملة للرسوم الدراسية
-✅ أكثر من 35 جامعة ومعهد شريك
-✅ إرشاد أكاديمي متخصص مجاني
-✅ متاح للمتفوقين والمحتاجين
-
-🔥 *الأماكن محدودة* — سجّل الآن قبل فوات الأوان!
-🌐 almossah-website.vercel.app/register`,
-
-  discounts: `📚 *التخفيضات الجامعية الحصرية*
-
-خصومات تصل إلى *70%* على رسوم الجامعات:
-
-✅ 35+ جامعة ومعهداً معتمداً
-✅ تخصصات طب، هندسة، أعمال، تقنية
-✅ شراكات حكومية وخاصة موثوقة
-
-💡 *تخيّل توفير آلاف الدولارات* على تعليمك الجامعي — هذه الفرصة نادرة في ظل الظروف الحالية!
-🌐 almossah-website.vercel.app/register`,
-
-  insurance: `🏥 *التأمين الصحي الشامل*
-
-حماية صحية لك ولأسرتك بأسعار ميسورة:
-
-✅ أفضل المستشفيات في اليمن
-✅ فحوصات ومختبرات مدعومة
-✅ باقات للفرد والأسرة
-
-🌐 almossah-website.vercel.app/training-register`,
-
-  training: `💡 *الدورات التدريبية المعتمدة*
-
-استثمر في مهاراتك اليوم — واحصد النتائج غداً:
-
-✅ اللغة الإنجليزية (مستويات متعددة)
-✅ الحاسوب وتقنية المعلومات
-✅ مهارات سوق العمل
-✅ شهادات معتمدة دولياً
-
-🌐 almossah-website.vercel.app/training-register`,
-
-  register: `📝 *ابدأ رحلتك الآن*
-
-التسجيل أسهل مما تتخيل — دقيقة واحدة فقط:
-
-🌐 *للتسجيل الدراسي:*
-almossah-website.vercel.app/register
-
-🌐 *للدورات والتأمين:*
-almossah-website.vercel.app/training-register
-
-⏰ ساعات العمل: السبت-الخميس 8ص-4م
-📞 أو تحدث معي مباشرة وسأساعدك خطوة بخطوة!`,
-
-  contact: `📞 *معلومات التواصل*
-
-🏛 المؤسسة الوطنية للتنمية الشاملة
-📍 أمانة العاصمة، شارع الزبيري، صنعاء
-⏰ السبت-الخميس: 8:00ص - 4:00م
-🌐 almossah-website.vercel.app`,
+  grants: `🏆 المنح الدراسية الكاملة\n\nأكثر من 15,000 طالب حققوا أحلامهم معنا!\n✅ تغطية كاملة للرسوم للمتميزين والمحتاجين\n✅ 35+ جامعة شريكة\n\n💡 اكتب اسمك الكامل وتخصصك وسأسجّلك مباشرة!`,
+  discounts: `📚 التخفيضات الجامعية الحصرية\n\n✅ خصومات استثنائية على أفضل الجامعات\n✅ طب | هندسة | إدارة | تقنية وأكثر\n\n💬 أخبرني بتخصصك ومعدلك وسأجد لك أفضل خيار!`,
+  insurance: `🏥 التأمين الصحي الشامل\n\n✅ أفضل المستشفيات في اليمن\n✅ فحوصات ومختبرات مدعومة\n✅ باقات للفرد والأسرة\n\n🌐 almossah-website.vercel.app/training-register`,
+  training: `💡 الدورات التدريبية المعتمدة\n\n✅ لغة إنجليزية | حاسوب | مهارات سوق العمل\n✅ شهادات معتمدة دولياً\n\n🌐 almossah-website.vercel.app/training-register`,
+  register: `📝 التسجيل الذكي عبر ناصر\n\nبدون زيارة الموقع! فقط أرسل لي:\n1️⃣ اسمك الكامل\n2️⃣ رقم هاتفك\n3️⃣ معدلك في الثانوية\n4️⃣ التخصص المطلوب\n\nوسأكمل تسجيلك فوراً! 🚀`,
+  contact: `📞 معلومات التواصل\n\n🏛 المؤسسة الوطنية للتنمية الشاملة\n📍 صنعاء — جولة المصباحي، اتجاه ريماس، عمارة النزيلي\n⏰ السبت-الخميس: 8:00ص - 4:00م\n🌐 almossah-website.vercel.app`,
 };
 
 async function handleFBEvent(event: Record<string, unknown>, platform: string) {
@@ -124,9 +64,19 @@ async function handleFBEvent(event: Record<string, unknown>, platform: string) {
   const token = platform === "instagram" ? IG_TOKEN() : FB_TOKEN();
   if (!token) return;
 
+  // Quick reply payload
   const quickReplyPayload = (event.message as Record<string, unknown>)?.quick_reply as Record<string, string> | undefined;
   if (quickReplyPayload?.payload) {
-    const resp = MENU_RESPONSES[quickReplyPayload.payload];
+    const payload = quickReplyPayload.payload;
+    if (payload === "menu") {
+      await sendFBQuickReplies(senderId, MENU_TEXT, QUICK_REPLIES, token);
+      return;
+    }
+    if (payload === "ai_chat") {
+      await sendFBText(senderId, "💬 تفضل، اكتب سؤالك وسأجيبك فوراً:", token);
+      return;
+    }
+    const resp = MENU_RESPONSES[payload];
     if (resp) {
       await sendFBText(senderId, resp, token);
       await sendFBQuickReplies(senderId, "ماذا تريد الآن؟", [
@@ -134,14 +84,6 @@ async function handleFBEvent(event: Record<string, unknown>, platform: string) {
         { content_type: "text", title: "📝 سجّل الآن", payload: "register" },
         { content_type: "text", title: "💬 اسأل ناصر", payload: "ai_chat" },
       ], token);
-      return;
-    }
-    if (quickReplyPayload.payload === "menu") {
-      await sendFBQuickReplies(senderId, MENU_TEXT, QUICK_REPLIES, token);
-      return;
-    }
-    if (quickReplyPayload.payload === "ai_chat") {
-      await sendFBText(senderId, "💬 تفضل، اكتب سؤالك وسأجيبك فوراً:", token);
       return;
     }
   }
@@ -157,9 +99,22 @@ async function handleFBEvent(event: Record<string, unknown>, platform: string) {
     return;
   }
 
+  // AI conversation via unified master prompt
   const convo = await getOrCreateConversation(platform, senderId);
-  const reply = await processMessage(convo.id, text);
+  const platformLabel = platform === "instagram" ? "انستقرام" : "فيسبوك";
+  const { reply, registrationId } = await processMessageFull(convo.id, text, platformLabel);
+
   await sendFBText(senderId, reply, token);
+
+  // If auto-registered, send success message
+  if (registrationId) {
+    await sendFBText(
+      senderId,
+      `✅ تم تسجيلك بنجاح!\n\n📋 رقم طلبك: #${registrationId}\n\nسيتواصل معك فريق المؤسسة قريباً. بالتوفيق! 🌟`,
+      token,
+    );
+  }
+
   await sendFBQuickReplies(senderId, "هل تريد شيئاً آخر؟", [
     { content_type: "text", title: "🏠 القائمة", payload: "menu" },
     { content_type: "text", title: "📝 سجّل الآن", payload: "register" },
