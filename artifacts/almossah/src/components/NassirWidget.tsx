@@ -16,6 +16,11 @@ interface ExtractedData {
   gpa?: string;
   department?: string;
   city?: string;
+  phone?: string;
+  email?: string;
+  programType?: string;
+  specialtyWanted?: string;
+  universityChoice1?: string;
   notes?: string;
 }
 
@@ -46,6 +51,22 @@ function renderContent(text: string): string {
     .replace(/\*(.*?)\*/g, "<em>$1</em>");
 }
 
+// Check if string looks like a phone number
+function looksLikePhone(text: string): boolean {
+  const digits = text.replace(/\D/g, "");
+  return digits.length >= 9 && digits.length <= 15;
+}
+
+// الحقول المطلوبة للتسجيل مرتّبة حسب الأولوية
+const REQUIRED_FIELDS: Array<{ key: keyof ExtractedData; label: string; question: string }> = [
+  { key: "fullName", label: "الاسم", question: "ما **اسمك الرباعي الكامل**؟" },
+  { key: "gpa", label: "المعدل", question: "ما **معدلك في الثانوية**؟ (مثال: 85% أو 425 درجة)" },
+  { key: "department", label: "القسم", question: "ما **قسمك**؟ (علمي / أدبي)" },
+  { key: "city", label: "المدينة", question: "من أي **مدينة أو محافظة** أنت؟" },
+  { key: "phone", label: "الهاتف", question: "ما **رقم هاتفك**؟ حتى يتواصل معك فريقنا" },
+  { key: "programType", label: "البرنامج", question: "أي **برنامج** يهمك؟\n\n1️⃣ مقاعد مخفضة\n2️⃣ منحة دراسية كاملة\n3️⃣ دورة تدريبية\n4️⃣ تأمين صحي" },
+];
+
 export function NassirWidget() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
@@ -57,6 +78,8 @@ export function NassirWidget() {
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(0);
   const [regData, setRegData] = useState<Record<string, string>>({});
+  // Dynamic missing fields queue — filled after image extraction
+  const [missingFieldsQueue, setMissingFieldsQueue] = useState<typeof REQUIRED_FIELDS>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showImageSuccess, setShowImageSuccess] = useState(false);
   const [autoRegistered, setAutoRegistered] = useState<{ id: number; name: string } | null>(null);
@@ -99,7 +122,7 @@ export function NassirWidget() {
     await createConversation();
 
     const welcome = isRegisterPage
-      ? `مرحباً بك! أنا **ناصر** 🎓\n\nأنت على بُعد دقيقتين من تأمين مقعدك الجامعي!\n\n📸 **الأسرع:** أرسل صورة استمارة ثانويتك وأملأ بياناتك تلقائياً في ثوانٍ!\n✍️ **أو:** أخبرني بمعدلك وتخصصك المطلوب وسأجد لك أفضل جامعة بأقل تكلفة.\n\n**أكثر من 15,000 طالب** بدأوا هكذا — أنت التالي! 🌟`
+      ? `مرحباً بك! أنا **ناصر** 🎓\n\nأنت على بُعد دقيقتين من تأمين مقعدك الجامعي!\n\n📸 **الأسرع:** أرسل صورة استمارتك وسأملأ البيانات تلقائياً في ثوانٍ!\n✍️ **أو:** أخبرني بمعدلك وتخصصك المطلوب وسأجد لك أفضل جامعة بأقل تكلفة.\n\n**أكثر من 15,000 طالب** بدأوا هكذا — أنت التالي! 🌟`
       : `مرحباً! أنا **ناصر** 👋\nمستشارك الأكاديمي الذكي — متاح الآن 🟢\n\nأخبرني بـ **معدلك** و**تخصصك المطلوب** وسأحلّل وضعك فوراً وأجد لك أفضل فرصة! 🎓`;
 
     addMessage("assistant", welcome);
@@ -151,7 +174,6 @@ export function NassirWidget() {
 
             if (data.content) {
               full += data.content;
-              // Strip 〔REG〕 blocks from live display
               const displayText = stripRegBlock(full);
               setMessages((prev) =>
                 prev.map((m) => m.id === msgId ? { ...m, content: displayText } : m),
@@ -160,7 +182,6 @@ export function NassirWidget() {
 
             if (data.autoRegistered && data.registrationId) {
               setAutoRegistered({ id: data.registrationId, name: data.studentName || "الطالب" });
-              // Update last message to clean version
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === msgId
@@ -187,6 +208,11 @@ export function NassirWidget() {
     void sendMessage(text);
   };
 
+  // ── بناء قائمة الحقول الناقصة بعد استخراج الصورة ────────────────────────────
+  const buildMissingQueue = (extracted: Record<string, string>): typeof REQUIRED_FIELDS => {
+    return REQUIRED_FIELDS.filter((f) => !extracted[f.key] || extracted[f.key].trim() === "");
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !conversationId) return;
@@ -211,33 +237,66 @@ export function NassirWidget() {
       const data = await r.json() as ExtractedData & { _error?: string };
       if (data._error) throw new Error(data._error);
 
-      setExtractedData(data);
       setUploadingImage(false);
       setShowImageSuccess(true);
       setTimeout(() => setShowImageSuccess(false), 3000);
 
-      const hasData = data.fullName || data.gpa || data.department;
-      if (hasData) {
-        const summary = [
+      const hasAnyData = data.fullName || data.gpa || data.department || data.city || data.phone;
+
+      if (hasAnyData) {
+        // Build summary of extracted fields
+        const summaryLines = [
           data.fullName ? `👤 الاسم: **${data.fullName}**` : null,
           data.gpa ? `📊 المعدل: **${data.gpa}**` : null,
           data.department ? `📚 القسم: **${data.department}**` : null,
           data.city ? `🏙 المدينة: **${data.city}**` : null,
+          data.phone ? `📱 الهاتف: **${data.phone}**` : null,
+          data.specialtyWanted ? `🎯 التخصص: **${data.specialtyWanted}**` : null,
+          data.universityChoice1 ? `🏛 الجامعة: **${data.universityChoice1}**` : null,
+          data.programType ? `📌 البرنامج: **${data.programType}**` : null,
         ].filter(Boolean).join("\n");
 
-        addMessage(
-          "assistant",
-          `✅ ممتاز! استخرجت بياناتك بنجاح:\n\n${summary}\n\nهل هذه البيانات صحيحة؟ سأحتاج أيضاً إلى **رقم هاتفك** لإتمام التسجيل.`,
-        );
-        setAwaitingConfirm(true);
-        setRegData({ ...data } as Record<string, string>);
-        setRegistrationStep(1);
+        // Store extracted data as regData
+        const initialRegData: Record<string, string> = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (typeof v === "string" && v.trim() !== "" && k !== "_error") {
+            initialRegData[k] = v.trim();
+          }
+        }
+        setRegData(initialRegData);
+        setExtractedData(data);
+
+        // Compute missing required fields
+        const missing = buildMissingQueue(initialRegData);
+        setMissingFieldsQueue(missing);
+
+        if (missing.length === 0) {
+          // كل البيانات المطلوبة موجودة — اعرض الملخص واطلب التأكيد مباشرة
+          addMessage(
+            "assistant",
+            `✅ ممتاز! استخرجت جميع بياناتك من الاستمارة:\n\n${summaryLines}\n\n**هل تؤكد التسجيل بهذه البيانات؟**`,
+          );
+          setRegistrationStep(8);
+          setAwaitingConfirm(true);
+        } else {
+          // هناك حقول ناقصة — اطلبها واحداً بواحد
+          const firstMissing = missing[0];
+          addMessage(
+            "assistant",
+            `✅ استخرجت بياناتك من الاستمارة:\n\n${summaryLines}\n\nلإتمام التسجيل أحتاج بعض المعلومات الإضافية:\n\n${firstMissing.question}`,
+          );
+          setRegistrationStep(20); // وضع "إكمال الحقول الناقصة بعد الصورة"
+          setMissingFieldsQueue(missing.slice(1)); // أزل أول سؤال (تم عرضه)
+        }
       } else {
+        // لم يُستخرج شيء
         addMessage(
           "assistant",
-          "لم أتمكن من قراءة الاستمارة بوضوح كافٍ.\n\nلا مشكلة! يمكنك إخباري ببياناتك مباشرة:\n**ما اسمك الكامل؟**",
+          "لم أتمكن من قراءة الاستمارة بوضوح كافٍ.\n\nلا مشكلة! يمكنك إخباري ببياناتك مباشرة:\n**ما اسمك الرباعي الكامل؟**",
         );
-        setRegistrationStep(2);
+        setRegData({});
+        setMissingFieldsQueue(REQUIRED_FIELDS.slice(1)); // ابدأ من الحقل الثاني (الاسم تم طرحه)
+        setRegistrationStep(20);
       }
     } catch {
       setUploadingImage(false);
@@ -247,22 +306,23 @@ export function NassirWidget() {
     if (e.target) e.target.value = "";
   };
 
-  const handleAutoRegister = async () => {
-    if (!conversationId || !extractedData) return;
+  const handleAutoRegister = async (finalData?: Record<string, string>) => {
+    const dataToRegister = finalData || regData;
+    if (!conversationId) return;
     setLoading(true);
     try {
       const r = await fetch("/api/nassir/auto-register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...regData,
-          programType: regData.programType || "مقاعد مخفضة",
+          ...dataToRegister,
+          programType: dataToRegister.programType || "مقاعد مخفضة",
           conversationId: String(conversationId),
         }),
       });
       const d = await r.json() as { success?: boolean; registrationId?: number; error?: string };
       if (d.success && d.registrationId) {
-        setAutoRegistered({ id: d.registrationId, name: regData.fullName || "الطالب" });
+        setAutoRegistered({ id: d.registrationId, name: dataToRegister.fullName || "الطالب" });
         addMessage(
           "assistant",
           `🎉 **تم تسجيلك بنجاح!**\n\nرقم طلبك: **#${d.registrationId}**\n\nسيتواصل معك فريقنا قريباً على رقم هاتفك المسجّل.\n\nنتمنى لك مسيرة أكاديمية موفقة! 🌟`,
@@ -271,6 +331,7 @@ export function NassirWidget() {
         setExtractedData(null);
         setRegistrationStep(0);
         setRegData({});
+        setMissingFieldsQueue([]);
       } else {
         addMessage("assistant", "حدث خطأ أثناء التسجيل. يرجى زيارة صفحة التسجيل مباشرة أو التواصل مع الفريق على 770441247.");
       }
@@ -280,26 +341,97 @@ export function NassirWidget() {
     setLoading(false);
   };
 
+  // ── دالة مساعدة: تحديد نوع البرنامج من إجابة المستخدم ──────────────────────
+  function parseProgramType(text: string): string {
+    if (text.includes("2") || text.includes("منح") || text.includes("منحة")) return "منحة دراسية";
+    if (text.includes("3") || text.includes("دورة")) return "دورة تدريبية";
+    if (text.includes("4") || text.includes("تأمين")) return "تأمين صحي";
+    return "مقاعد مخفضة";
+  }
+
   const handleSend = () => {
     if (!input.trim() || !conversationId) return;
 
-    // ── Manual step-by-step registration flow ────────────────────────────────
-    if (awaitingConfirm && registrationStep === 1) {
+    // ── وضع إكمال الحقول الناقصة بعد استخراج الصورة (step 20) ─────────────
+    if (registrationStep === 20) {
+      const text = input.trim();
+
+      // تحقق من أن المستخدم لا يريد تصحيح البيانات
+      if (text.includes("تعديل") || text.includes("خطأ") || text.includes("غلط") || text.toLowerCase() === "no" || text === "لا") {
+        addMessage("user", text); setInput("");
+        addMessage("assistant", "لا مشكلة! أخبرني ببياناتك الصحيحة:\n**ما اسمك الرباعي الكامل؟**");
+        setRegData({}); setExtractedData(null);
+        setMissingFieldsQueue(REQUIRED_FIELDS.slice(1));
+        // بقى في step 20 والحقل الأول هو الاسم
+        setRegData({});
+        return;
+      }
+
+      addMessage("user", text); setInput("");
+
+      // احفظ الإجابة للحقل الذي طُرح آخراً
+      // نحدد الحقل الحالي من الحقول الناقصة الأصلية مطروحاً منها ما تبقى
+      // أبسط طريقة: نتتبع الحقل الحالي المطلوب من السياق
+      // استخدم missingFieldsQueue كـ "الحقول المتبقية"
+      // الحقل الذي تمت الإجابة عنه = REQUIRED_FIELDS[index of current question]
+      // نستخدم approach مختلف: نحفظ في regData مباشرة
+
+      // حدد الحقل الذي يحتاج للإجابة الآن
+      // هو: أول حقل في REQUIRED_FIELDS غير موجود في regData
+      const allMissing = buildMissingQueue(regData);
+      const currentField = allMissing[0];
+
+      if (!currentField) {
+        // لا يوجد حقول ناقصة — اعرض التأكيد
+        showFinalConfirmation(regData);
+        return;
+      }
+
+      // احفظ الإجابة
+      let value = text;
+      if (currentField.key === "programType") {
+        value = parseProgramType(text);
+      } else if (currentField.key === "phone" && !looksLikePhone(text)) {
+        addMessage("assistant", "يبدو أن الرقم غير صحيح. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل):");
+        return;
+      }
+
+      const updatedData = { ...regData, [currentField.key]: value };
+      setRegData(updatedData);
+
+      // تحقق من الحقول الناقصة المتبقية
+      const stillMissing = buildMissingQueue(updatedData);
+
+      if (stillMissing.length === 0) {
+        // اكتملت كل البيانات
+        showFinalConfirmation(updatedData);
+      } else {
+        // اسأل عن الحقل التالي
+        addMessage("assistant", stillMissing[0].question);
+      }
+      return;
+    }
+
+    // ── تأكيد التسجيل النهائي (step 8) ────────────────────────────────────────
+    if (registrationStep === 8 && awaitingConfirm) {
       const lc = input.toLowerCase();
-      const confirmed = lc.includes("نعم") || lc.includes("صح") || lc.includes("صحيح") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("yes");
+      const confirmed = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("صح") || lc.includes("yes");
       if (confirmed) {
         addMessage("user", input); setInput("");
-        addMessage("assistant", "رائع! 🎊 آخر خطوة — ما **رقم هاتفك** حتى يتواصل معك فريقنا؟");
-        setRegistrationStep(3); setAwaitingConfirm(false); return;
+        void handleAutoRegister(); return;
       }
-      const denied = lc.includes("لا") || lc.includes("خطأ") || lc.includes("غلط") || lc.includes("no");
+      const denied = lc.includes("لا") || lc.includes("خطأ") || lc.includes("غلط");
       if (denied) {
         addMessage("user", input); setInput("");
-        addMessage("assistant", "لا مشكلة! أخبرني ببياناتك الصحيحة:\n**ما اسمك الكامل؟**");
-        setAwaitingConfirm(false); setRegistrationStep(2); return;
+        addMessage("assistant", "لا مشكلة! أخبرني ما الذي تريد تصحيحه أو ابدأ من جديد:\n**ما اسمك الرباعي الكامل؟**");
+        setRegData({}); setExtractedData(null); setAwaitingConfirm(false);
+        setMissingFieldsQueue(REQUIRED_FIELDS.slice(1));
+        setRegistrationStep(20);
+        return;
       }
     }
 
+    // ── تدفق التسجيل اليدوي الكامل ─────────────────────────────────────────────
     if (registrationStep === 2) {
       const text = input.trim(); addMessage("user", text); setInput("");
       setRegData((prev) => ({ ...prev, fullName: text }));
@@ -332,53 +464,46 @@ export function NassirWidget() {
     }
     if (registrationStep === 3) {
       const phone = input.trim();
-      if (phone.replace(/\D/g, "").length < 9) {
+      if (!looksLikePhone(phone)) {
         addMessage("user", input); setInput("");
         addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل)."); return;
       }
       addMessage("user", phone); setInput("");
-      const fullRegData = { ...regData, phone };
-      setRegData(fullRegData);
-
+      const updatedData = { ...regData, phone };
+      setRegData(updatedData);
       addMessage("assistant", `أي برنامج يهمك؟\n\n1️⃣ **مقاعد مخفضة** — جامعة بسعر استثنائي\n2️⃣ **منحة دراسية كاملة** — للمتميزين\n3️⃣ **دورة تدريبية** — لغة / حاسوب / مهارات\n4️⃣ **تأمين صحي** — للفرد والأسرة`);
       setRegistrationStep(7); return;
     }
     if (registrationStep === 7) {
       const text = input.trim(); addMessage("user", text); setInput("");
-      let programType = "مقاعد مخفضة";
-      if (text.includes("2") || text.includes("منح")) programType = "منحة دراسية";
-      else if (text.includes("3") || text.includes("دورة")) programType = "دورة تدريبية";
-      else if (text.includes("4") || text.includes("تأمين")) programType = "تأمين صحي";
-
+      const programType = parseProgramType(text);
       const finalData = { ...regData, programType };
       setRegData(finalData);
       setExtractedData(finalData as ExtractedData);
-      setRegistrationStep(8);
-
-      const summary = [
-        finalData.fullName ? `👤 الاسم: **${finalData.fullName}**` : null,
-        finalData.phone ? `📱 الهاتف: **${finalData.phone}**` : null,
-        finalData.gpa ? `📊 المعدل: **${finalData.gpa}**` : null,
-        finalData.department ? `📚 القسم: **${finalData.department}**` : null,
-        finalData.specialtyWanted ? `🎯 التخصص: **${finalData.specialtyWanted}**` : null,
-        finalData.city ? `🏙 المدينة: **${finalData.city}**` : null,
-        `📌 البرنامج: **${programType}**`,
-      ].filter(Boolean).join("\n");
-
-      addMessage("assistant", `✅ **ملخص طلب تسجيلك:**\n\n${summary}\n\n**هل تؤكد التسجيل بهذه البيانات؟**`);
-      setAwaitingConfirm(true); return;
-    }
-    if (registrationStep === 8 && awaitingConfirm) {
-      const lc = input.toLowerCase();
-      const confirmed = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("yes");
-      if (confirmed) {
-        addMessage("user", input); setInput("");
-        void handleAutoRegister(); return;
-      }
+      showFinalConfirmation(finalData);
+      return;
     }
 
     // Default: send to AI
     void sendMessage(input);
+  };
+
+  // ── عرض ملخص التسجيل النهائي وطلب التأكيد ────────────────────────────────
+  const showFinalConfirmation = (data: Record<string, string>) => {
+    const summary = [
+      data.fullName ? `👤 الاسم: **${data.fullName}**` : null,
+      data.phone ? `📱 الهاتف: **${data.phone}**` : null,
+      data.gpa ? `📊 المعدل: **${data.gpa}**` : null,
+      data.department ? `📚 القسم: **${data.department}**` : null,
+      data.specialtyWanted ? `🎯 التخصص: **${data.specialtyWanted}**` : null,
+      data.city ? `🏙 المدينة: **${data.city}**` : null,
+      data.programType ? `📌 البرنامج: **${data.programType}**` : null,
+    ].filter(Boolean).join("\n");
+
+    addMessage("assistant", `✅ **ملخص طلب تسجيلك:**\n\n${summary}\n\n**هل تؤكد التسجيل بهذه البيانات؟**`);
+    setExtractedData(data as ExtractedData);
+    setRegistrationStep(8);
+    setAwaitingConfirm(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -460,7 +585,7 @@ export function NassirWidget() {
               ))}
 
               {/* Quick replies */}
-              {messages.length > 0 && !loading && !awaitingConfirm && (
+              {messages.length > 0 && !loading && !awaitingConfirm && registrationStep === 0 && (
                 <div className="flex flex-wrap gap-2 justify-end pt-1">
                   {(isRegisterPage && messages.length <= 2 ? QUICK_REPLIES_REGISTER : QUICK_REPLIES_DEFAULT).map((qr) => (
                     <button
@@ -488,6 +613,8 @@ export function NassirWidget() {
                       setRegistrationStep(0);
                       setAwaitingConfirm(false);
                       setExtractedData(null);
+                      setRegData({});
+                      setMissingFieldsQueue([]);
                       addMessage("assistant", "لا مشكلة! يمكنك البدء من جديد. ما الذي يمكنني مساعدتك فيه؟");
                     }}
                     className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg px-3 py-2"
@@ -574,27 +701,29 @@ export function NassirWidget() {
   );
 }
 
-// Image compression helper
+// ── Image compression helper ──────────────────────────────────────────────────
 async function compressAndToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1200;
+      const MAX = 1024;
       let { width, height } = img;
       if (width > MAX || height > MAX) {
-        const ratio = Math.min(MAX / width, MAX / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
+        if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+        else { width = Math.round((width * MAX) / height); height = MAX; }
       }
       const canvas = document.createElement("canvas");
       canvas.width = width; canvas.height = height;
-      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas not supported")); return; }
+      ctx.drawImage(img, 0, 0, width, height);
       const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-      resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+      const base64 = dataUrl.split(",")[1];
+      resolve({ base64, mimeType: "image/jpeg" });
     };
-    img.onerror = reject;
+    img.onerror = () => reject(new Error("Failed to load image"));
     img.src = url;
   });
 }

@@ -484,35 +484,51 @@ export interface ExtractedFormData {
   gpa?: string;
   department?: string;
   city?: string;
+  phone?: string;
+  email?: string;
+  programType?: string;
+  specialtyWanted?: string;
+  universityChoice1?: string;
   notes?: string;
 }
 
 export async function extractFormDataFromImage(imageBase64: string, mimeType: string): Promise<ExtractedFormData> {
-  const prompt = `أنت خبير في قراءة وثائق الثانوية العامة اليمنية.
-افحص الصورة بدقة واستخرج هذه البيانات بتنسيق JSON فقط بدون أي نص آخر:
+  const prompt = `أنت خبير في قراءة الوثائق الرسمية اليمنية سواء كانت شهادات ثانوية أو استمارات تسجيل جامعية.
+
+افحص الصورة بدقة شديدة واستخرج جميع البيانات المتوفرة بتنسيق JSON فقط بدون أي نص آخر:
 
 {
-  "fullName": "الاسم الرباعي الكامل للطالب كما هو مكتوب في الاستمارة",
+  "fullName": "الاسم الرباعي الكامل للطالب كما هو مكتوب",
   "gpa": "المعدل أو المجموع بالأرقام فقط (مثل: 87 أو 425 أو 92.5)",
   "department": "علمي أو أدبي",
   "city": "اسم المحافظة أو المدينة",
-  "notes": "رقم الجلوس أو السنة إن وجدت"
+  "phone": "رقم الهاتف إن وجد في الاستمارة",
+  "email": "البريد الإلكتروني إن وجد",
+  "programType": "نوع البرنامج المطلوب إن ذُكر (مقاعد مخفضة أو منحة دراسية أو تأمين صحي أو دورة تدريبية)",
+  "specialtyWanted": "التخصص المطلوب إن ذُكر في الاستمارة",
+  "universityChoice1": "الجامعة الأولى المختارة إن ذُكرت",
+  "notes": "رقم الجلوس أو السنة أو أي معلومة إضافية مفيدة"
 }
 
-تعليمات مهمة:
-- الاسم: ابحث عن حقل يحمل تسمية (اسم الطالب) أو (الاسم) وانسخه كاملاً
-- المعدل: ابحث عن (المعدل) أو (المجموع) أو (الدرجة الكلية) واكتب الرقم فقط
-- القسم: ابحث عن (القسم) أو (الفرع) — علمي أو أدبي
-- إذا لم تقرأ حقلاً بوضوح اتركه ""
-- أعد JSON فقط بدون شرح أو مقدمة`;
+تعليمات استخراج دقيقة:
+- الاسم: ابحث عن حقل يحمل تسمية (اسم الطالب) أو (الاسم الرباعي) أو (الاسم) وانسخه كاملاً بدون تغيير
+- المعدل: ابحث عن (المعدل) أو (المجموع) أو (الدرجة الكلية) أو (النسبة المئوية) واكتب الرقم فقط
+- القسم: ابحث عن (القسم) أو (الفرع) — علمي أو أدبي فقط
+- المدينة: ابحث عن (المحافظة) أو (المدينة) أو (مكان الإقامة)
+- الهاتف: ابحث عن (رقم الهاتف) أو (الجوال) أو (الموبايل) أو أي تسلسل رقمي يبدأ بـ 7 ومكون من 9 أرقام
+- البريد الإلكتروني: ابحث عن أي عنوان يحتوي على @
+- التخصص: ابحث عن (التخصص المطلوب) أو (الكلية) أو (الشعبة الجامعية)
+- الجامعة: ابحث عن (الجامعة الأولى) أو (الجامعة المفضلة) أو (المؤسسة التعليمية)
+- إذا لم تقرأ حقلاً بوضوح كافٍ اتركه "" ولا تخمّن
+- أعد JSON فقط بدون شرح أو مقدمة أو نص إضافي`;
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Vision timeout after 20s")), 20000),
+    setTimeout(() => reject(new Error("Vision timeout after 25s")), 25000),
   );
 
   const apiCall = groq.chat.completions.create({
     model: GROQ_VISION_MODEL,
-    max_tokens: 300,
+    max_tokens: 400,
     temperature: 0,
     messages: [
       {
@@ -530,7 +546,15 @@ export async function extractFormDataFromImage(imageBase64: string, mimeType: st
     const text = response.choices[0]?.message?.content || "{}";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return {};
-    return JSON.parse(jsonMatch[0]) as ExtractedFormData;
+    const parsed = JSON.parse(jsonMatch[0]) as ExtractedFormData;
+    // Clean up empty strings — treat "" as missing
+    const clean: ExtractedFormData = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "string" && v.trim() !== "") {
+        (clean as Record<string, string>)[k] = v.trim();
+      }
+    }
+    return clean;
   } catch (err) {
     throw new Error(`Vision API error: ${err instanceof Error ? err.message : String(err)}`);
   }

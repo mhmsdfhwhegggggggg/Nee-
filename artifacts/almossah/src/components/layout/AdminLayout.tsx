@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useGetAdminMe } from "@workspace/api-client-react";
-import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap, Bell } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap, Bell, Bot, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
@@ -19,10 +19,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Real-time notification badge ────────────────────────────────────────────
   const [newRegCount, setNewRegCount] = useState(0);
   const lastTotalRef = useRef<number | null>(null);
-  const lastPendingRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!hasToken) return;
@@ -37,12 +35,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         if (!r.ok) return;
         const data = await r.json() as { totalRegistrations?: number; pendingRegistrations?: number };
         const total = data.totalRegistrations ?? 0;
-        const pending = data.pendingRegistrations ?? 0;
 
         if (lastTotalRef.current !== null && total > lastTotalRef.current) {
           const diff = total - lastTotalRef.current;
           setNewRegCount((c) => c + diff);
-          // Play a subtle browser notification sound if permission granted
           if (Notification.permission === "granted") {
             new Notification("🔔 تسجيل جديد عبر ناصر", {
               body: `وصل ${diff} طلب${diff > 1 ? "ات" : ""} تسجيل جديد`,
@@ -51,17 +47,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           }
         }
         lastTotalRef.current = total;
-        lastPendingRef.current = pending;
       } catch {}
     };
 
-    // Request notification permission once
     if (Notification.permission === "default") {
       void Notification.requestPermission();
     }
 
     void check();
-    const interval = setInterval(check, 20000); // every 20 seconds
+    const interval = setInterval(check, 20000);
     return () => clearInterval(interval);
   }, [hasToken]);
 
@@ -117,7 +111,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     { href: "/admin/dashboard", label: "لوحة التحكم", icon: <LayoutDashboard size={20} /> },
     { href: "/admin/registrations", label: "طلبات التسجيل", icon: <Users size={20} /> },
+    { href: "/admin/nassir", label: "ناصر المساعد الذكي", icon: <Bot size={20} /> },
     { href: "/admin/register-form-config", label: "إدارة نموذج التسجيل", icon: <ClipboardEdit size={20} /> },
+    { href: "/admin/training-form", label: "نماذج تسجيل الدورات", icon: <ClipboardList size={20} /> },
     { href: "/admin/university-specialties", label: "تخصصات الجامعات", icon: <GraduationCap size={20} /> },
     { href: "/admin/news", label: "الأخبار والفعاليات", icon: <FileText size={20} /> },
     { href: "/admin/slides", label: "شرائح الصفحة الرئيسية", icon: <ImageIcon size={20} /> },
@@ -136,7 +132,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </Button>
       </div>
 
-      {/* Notification bell — top left on mobile, visible in sidebar header on desktop */}
       {newRegCount > 0 && (
         <Link href="/admin/registrations">
           <div
@@ -159,7 +154,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <span className="font-bold text-base leading-tight">لوحة الإدارة</span>
           </div>
 
-          {/* Notification bell in sidebar */}
           {newRegCount > 0 && (
             <Link href="/admin/registrations">
               <button
