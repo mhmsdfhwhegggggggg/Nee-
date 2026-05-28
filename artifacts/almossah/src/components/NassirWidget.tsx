@@ -57,14 +57,17 @@ function looksLikePhone(text: string): boolean {
   return digits.length >= 9 && digits.length <= 15;
 }
 
-// الحقول المطلوبة للتسجيل مرتّبة حسب الأولوية
+// الحقول المطلوبة للتسجيل — تطابق نموذج التسجيل الرسمي
 const REQUIRED_FIELDS: Array<{ key: keyof ExtractedData; label: string; question: string }> = [
-  { key: "fullName", label: "الاسم", question: "ما **اسمك الرباعي الكامل**؟" },
-  { key: "gpa", label: "المعدل", question: "ما **معدلك في الثانوية**؟ (مثال: 85% أو 425 درجة)" },
-  { key: "department", label: "القسم", question: "ما **قسمك**؟ (علمي / أدبي)" },
-  { key: "city", label: "المدينة", question: "من أي **مدينة أو محافظة** أنت؟" },
-  { key: "phone", label: "الهاتف", question: "ما **رقم هاتفك**؟ حتى يتواصل معك فريقنا" },
-  { key: "programType", label: "البرنامج", question: "أي **برنامج** يهمك؟\n\n1️⃣ مقاعد مخفضة\n2️⃣ منحة دراسية كاملة\n3️⃣ دورة تدريبية\n4️⃣ تأمين صحي" },
+  { key: "fullName",        label: "الاسم",      question: "ما **اسمك الرباعي الكامل**؟" },
+  { key: "gpa",             label: "المعدل",     question: "ما **معدلك في الثانوية**؟ (مثال: 85.5% أو 425 درجة)" },
+  { key: "department",      label: "القسم",      question: "ما **قسمك**؟\n\n1️⃣ علمي\n2️⃣ أدبي" },
+  { key: "city",            label: "المدينة",    question: "من أي **محافظة**؟\n\nصنعاء | عدن | تعز | إب | الحديدة | حضرموت | مأرب | ذمار | صعدة | شبوة | البيضاء | لحج | أبين | ريمة | الضالع | المهرة | أمانة العاصمة" },
+  { key: "phone",           label: "الهاتف",     question: "ما **رقم هاتفك**؟ (9 أرقام على الأقل)" },
+  { key: "email",           label: "البريد",     question: "ما **بريدك الإلكتروني**؟\n\n_(اكتب **تخطي** إذا لم يكن لديك)_" },
+  { key: "programType",     label: "البرنامج",   question: "أي **برنامج** يهمك؟\n\n1️⃣ منح دراسية\n2️⃣ تخفيضات جامعية\n3️⃣ تأمين طبي\n4️⃣ برامج أكاديمية" },
+  { key: "universityChoice1", label: "الجامعة", question: "أي **جامعة** تفضل؟" },
+  { key: "specialtyWanted", label: "التخصص",    question: "أي **تخصص** تريده؟" },
 ];
 
 export function NassirWidget() {
@@ -78,8 +81,9 @@ export function NassirWidget() {
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(0);
   const [regData, setRegData] = useState<Record<string, string>>({});
-  // Dynamic missing fields queue — filled after image extraction
   const [missingFieldsQueue, setMissingFieldsQueue] = useState<typeof REQUIRED_FIELDS>([]);
+  const [availableUniversities, setAvailableUniversities] = useState<string[]>([]);
+  const [availableSpecialties, setAvailableSpecialties] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showImageSuccess, setShowImageSuccess] = useState(false);
   const [autoRegistered, setAutoRegistered] = useState<{ id: number; name: string } | null>(null);
@@ -208,9 +212,47 @@ export function NassirWidget() {
     void sendMessage(text);
   };
 
-  // ── بناء قائمة الحقول الناقصة بعد استخراج الصورة ────────────────────────────
   const buildMissingQueue = (extracted: Record<string, string>): typeof REQUIRED_FIELDS => {
     return REQUIRED_FIELDS.filter((f) => !extracted[f.key] || extracted[f.key].trim() === "");
+  };
+
+  // ── سؤال ديناميكي (يجلب الجامعات/التخصصات من API) ────────────────────────
+  const askMissingField = async (field: typeof REQUIRED_FIELDS[0], data: Record<string, string>) => {
+    if (field.key === "universityChoice1") {
+      const gpa = data.gpa || "0";
+      const dept = data.department || "";
+      try {
+        const r = await fetch(`/api/university-specialties?${new URLSearchParams({ gpa, department: dept })}`);
+        const specs = await r.json() as Array<{ university_name: string }>;
+        const univs = [...new Set(specs.map((s) => s.university_name))].sort();
+        if (univs.length > 0) {
+          setAvailableUniversities(univs);
+          const list = univs.map((u, i) => `${i + 1}. ${u}`).join("\n");
+          addMessage("assistant", `🏛 **الجامعات المتاحة لمعدلك (${gpa}) وقسمك (${dept}):**\n\n${list}\n\nاكتب **اسم الجامعة** أو **رقمها**:`);
+          return;
+        }
+      } catch { /* fallthrough */ }
+      addMessage("assistant", field.question);
+    } else if (field.key === "specialtyWanted") {
+      const uni = data.universityChoice1 || "";
+      const gpa = data.gpa || "0";
+      const dept = data.department || "";
+      if (uni) {
+        try {
+          const r = await fetch(`/api/university-specialties?${new URLSearchParams({ university: uni, gpa, department: dept })}`);
+          const specs = await r.json() as Array<{ specialty_name: string }>;
+          if (specs.length > 0) {
+            setAvailableSpecialties(specs.map((s) => s.specialty_name));
+            const list = specs.map((s, i) => `${i + 1}. ${s.specialty_name}`).join("\n");
+            addMessage("assistant", `🎓 **التخصصات المتاحة في ${uni}:**\n\n${list}\n\nاكتب **اسم التخصص** أو **رقمه**:`);
+            return;
+          }
+        } catch { /* fallthrough */ }
+      }
+      addMessage("assistant", field.question);
+    } else {
+      addMessage("assistant", field.question);
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -279,14 +321,12 @@ export function NassirWidget() {
           setRegistrationStep(8);
           setAwaitingConfirm(true);
         } else {
-          // هناك حقول ناقصة — اطلبها واحداً بواحد
-          const firstMissing = missing[0];
+          setRegistrationStep(20);
           addMessage(
             "assistant",
-            `✅ استخرجت بياناتك من الاستمارة:\n\n${summaryLines}\n\nلإتمام التسجيل أحتاج بعض المعلومات الإضافية:\n\n${firstMissing.question}`,
+            `✅ استخرجت بياناتك من الاستمارة:\n\n${summaryLines}\n\nلإتمام التسجيل أحتاج بعض المعلومات الإضافية:`,
           );
-          setRegistrationStep(20); // وضع "إكمال الحقول الناقصة بعد الصورة"
-          setMissingFieldsQueue(missing.slice(1)); // أزل أول سؤال (تم عرضه)
+          void askMissingField(missing[0], initialRegData);
         }
       } else {
         // لم يُستخرج شيء
@@ -316,7 +356,7 @@ export function NassirWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...dataToRegister,
-          programType: dataToRegister.programType || "مقاعد مخفضة",
+          programType: dataToRegister.programType || "تخفيضات جامعية",
           conversationId: String(conversationId),
         }),
       });
@@ -341,146 +381,90 @@ export function NassirWidget() {
     setLoading(false);
   };
 
-  // ── دالة مساعدة: تحديد نوع البرنامج من إجابة المستخدم ──────────────────────
   function parseProgramType(text: string): string {
-    if (text.includes("2") || text.includes("منح") || text.includes("منحة")) return "منحة دراسية";
-    if (text.includes("3") || text.includes("دورة")) return "دورة تدريبية";
-    if (text.includes("4") || text.includes("تأمين")) return "تأمين صحي";
-    return "مقاعد مخفضة";
+    if (text.includes("1") || text.includes("منح") || text.includes("منحة")) return "منح دراسية";
+    if (text.includes("2") || text.includes("تخفيض")) return "تخفيضات جامعية";
+    if (text.includes("3") || text.includes("تأمين")) return "تأمين طبي";
+    if (text.includes("4") || text.includes("أكاديم")) return "برامج أكاديمية";
+    return "تخفيضات جامعية";
+  }
+
+  function parseDepartment(text: string): string {
+    if (text.includes("1") || text.includes("علمي")) return "علمي";
+    if (text.includes("2") || text.includes("أدبي")) return "أدبي";
+    return text.trim();
   }
 
   const handleSend = () => {
     if (!input.trim() || !conversationId) return;
 
-    // ── وضع إكمال الحقول الناقصة بعد استخراج الصورة (step 20) ─────────────
+    // ── step 20: إكمال الحقول الناقصة (بعد الصورة أو اليدوي) ────────────────
     if (registrationStep === 20) {
       const text = input.trim();
-
-      // تحقق من أن المستخدم لا يريد تصحيح البيانات
-      if (text.includes("تعديل") || text.includes("خطأ") || text.includes("غلط") || text.toLowerCase() === "no" || text === "لا") {
+      if (text.includes("تعديل") || text.includes("خطأ") || text.includes("غلط")) {
         addMessage("user", text); setInput("");
-        addMessage("assistant", "لا مشكلة! أخبرني ببياناتك الصحيحة:\n**ما اسمك الرباعي الكامل؟**");
-        setRegData({}); setExtractedData(null);
-        setMissingFieldsQueue(REQUIRED_FIELDS.slice(1));
-        // بقى في step 20 والحقل الأول هو الاسم
-        setRegData({});
-        return;
+        addMessage("assistant", "لا مشكلة! أخبرني **باسمك الكامل** وأبدأ معك من جديد:");
+        setRegData({}); setExtractedData(null); setRegistrationStep(2); return;
       }
 
       addMessage("user", text); setInput("");
+      const currentField = buildMissingQueue(regData)[0];
+      if (!currentField) { showFinalConfirmation(regData); return; }
 
-      // احفظ الإجابة للحقل الذي طُرح آخراً
-      // نحدد الحقل الحالي من الحقول الناقصة الأصلية مطروحاً منها ما تبقى
-      // أبسط طريقة: نتتبع الحقل الحالي المطلوب من السياق
-      // استخدم missingFieldsQueue كـ "الحقول المتبقية"
-      // الحقل الذي تمت الإجابة عنه = REQUIRED_FIELDS[index of current question]
-      // نستخدم approach مختلف: نحفظ في regData مباشرة
-
-      // حدد الحقل الذي يحتاج للإجابة الآن
-      // هو: أول حقل في REQUIRED_FIELDS غير موجود في regData
-      const allMissing = buildMissingQueue(regData);
-      const currentField = allMissing[0];
-
-      if (!currentField) {
-        // لا يوجد حقول ناقصة — اعرض التأكيد
-        showFinalConfirmation(regData);
+      if (currentField.key === "phone" && !looksLikePhone(text)) {
+        addMessage("assistant", "يبدو أن الرقم غير صحيح. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل):");
         return;
       }
 
-      // احفظ الإجابة
       let value = text;
-      if (currentField.key === "programType") {
+      if (currentField.key === "department") {
+        value = parseDepartment(text);
+      } else if (currentField.key === "programType") {
         value = parseProgramType(text);
-      } else if (currentField.key === "phone" && !looksLikePhone(text)) {
-        addMessage("assistant", "يبدو أن الرقم غير صحيح. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل):");
-        return;
+      } else if (currentField.key === "universityChoice1" && availableUniversities.length > 0) {
+        const num = parseInt(text);
+        if (!isNaN(num) && num >= 1 && num <= availableUniversities.length) value = availableUniversities[num - 1];
+      } else if (currentField.key === "specialtyWanted" && availableSpecialties.length > 0) {
+        const num = parseInt(text);
+        if (!isNaN(num) && num >= 1 && num <= availableSpecialties.length) value = availableSpecialties[num - 1];
+      } else if (currentField.key === "email" && !text.includes("@")) {
+        value = "__skip__";
       }
 
       const updatedData = { ...regData, [currentField.key]: value };
       setRegData(updatedData);
 
-      // تحقق من الحقول الناقصة المتبقية
       const stillMissing = buildMissingQueue(updatedData);
-
       if (stillMissing.length === 0) {
-        // اكتملت كل البيانات
         showFinalConfirmation(updatedData);
       } else {
-        // اسأل عن الحقل التالي
-        addMessage("assistant", stillMissing[0].question);
+        void askMissingField(stillMissing[0], updatedData);
       }
       return;
     }
 
-    // ── تأكيد التسجيل النهائي (step 8) ────────────────────────────────────────
+    // ── step 8: تأكيد نهائي ────────────────────────────────────────────────
     if (registrationStep === 8 && awaitingConfirm) {
       const lc = input.toLowerCase();
-      const confirmed = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("صح") || lc.includes("yes");
-      if (confirmed) {
-        addMessage("user", input); setInput("");
-        void handleAutoRegister(); return;
-      }
+      const confirmed = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("صح");
+      if (confirmed) { addMessage("user", input); setInput(""); void handleAutoRegister(); return; }
       const denied = lc.includes("لا") || lc.includes("خطأ") || lc.includes("غلط");
       if (denied) {
         addMessage("user", input); setInput("");
-        addMessage("assistant", "لا مشكلة! أخبرني ما الذي تريد تصحيحه أو ابدأ من جديد:\n**ما اسمك الرباعي الكامل؟**");
-        setRegData({}); setExtractedData(null); setAwaitingConfirm(false);
-        setMissingFieldsQueue(REQUIRED_FIELDS.slice(1));
-        setRegistrationStep(20);
-        return;
+        addMessage("assistant", "لا مشكلة! أخبرني **باسمك الكامل** وأبدأ معك من جديد:");
+        setRegData({}); setExtractedData(null); setAwaitingConfirm(false); setRegistrationStep(2); return;
       }
     }
 
-    // ── تدفق التسجيل اليدوي الكامل ─────────────────────────────────────────────
+    // ── التسجيل اليدوي — خطوة البداية فقط، ثم step 20 يتولى الباقي ──────────
     if (registrationStep === 2) {
       const text = input.trim(); addMessage("user", text); setInput("");
-      setRegData((prev) => ({ ...prev, fullName: text }));
-      addMessage("assistant", `شكراً ${text}! 😊\n\n**ما هو معدلك في الثانوية؟** (مثال: 85% أو 425 درجة)`);
-      setRegistrationStep(4); return;
-    }
-    if (registrationStep === 4) {
-      const text = input.trim(); addMessage("user", text); setInput("");
-      setRegData((prev) => ({ ...prev, gpa: text }));
-      addMessage("assistant", `ممتاز! 📊\n\n**ما قسمك؟** (علمي / أدبي)`);
-      setRegistrationStep(5); return;
-    }
-    if (registrationStep === 5) {
-      const text = input.trim(); addMessage("user", text); setInput("");
-      setRegData((prev) => ({ ...prev, department: text }));
-      addMessage("assistant", `**ما التخصص الذي تريده؟** (مثال: طب بشري، هندسة، إدارة...)`);
-      setRegistrationStep(9); return;
-    }
-    if (registrationStep === 9) {
-      const text = input.trim(); addMessage("user", text); setInput("");
-      setRegData((prev) => ({ ...prev, specialtyWanted: text }));
-      addMessage("assistant", `**من أي مدينة أو محافظة أنت؟**`);
-      setRegistrationStep(6); return;
-    }
-    if (registrationStep === 6) {
-      const text = input.trim(); addMessage("user", text); setInput("");
-      setRegData((prev) => ({ ...prev, city: text }));
-      addMessage("assistant", `الآن آخر شيء — **رقم هاتفك** لإتمام التسجيل:`);
-      setRegistrationStep(3); return;
-    }
-    if (registrationStep === 3) {
-      const phone = input.trim();
-      if (!looksLikePhone(phone)) {
-        addMessage("user", input); setInput("");
-        addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل)."); return;
-      }
-      addMessage("user", phone); setInput("");
-      const updatedData = { ...regData, phone };
-      setRegData(updatedData);
-      addMessage("assistant", `أي برنامج يهمك؟\n\n1️⃣ **مقاعد مخفضة** — جامعة بسعر استثنائي\n2️⃣ **منحة دراسية كاملة** — للمتميزين\n3️⃣ **دورة تدريبية** — لغة / حاسوب / مهارات\n4️⃣ **تأمين صحي** — للفرد والأسرة`);
-      setRegistrationStep(7); return;
-    }
-    if (registrationStep === 7) {
-      const text = input.trim(); addMessage("user", text); setInput("");
-      const programType = parseProgramType(text);
-      const finalData = { ...regData, programType };
-      setRegData(finalData);
-      setExtractedData(finalData as ExtractedData);
-      showFinalConfirmation(finalData);
+      const d: Record<string, string> = { fullName: text };
+      setRegData(d);
+      setRegistrationStep(20);
+      const missing = buildMissingQueue(d);
+      if (missing.length > 0) void askMissingField(missing[0], d);
+      else showFinalConfirmation(d);
       return;
     }
 
@@ -491,13 +475,15 @@ export function NassirWidget() {
   // ── عرض ملخص التسجيل النهائي وطلب التأكيد ────────────────────────────────
   const showFinalConfirmation = (data: Record<string, string>) => {
     const summary = [
-      data.fullName ? `👤 الاسم: **${data.fullName}**` : null,
-      data.phone ? `📱 الهاتف: **${data.phone}**` : null,
-      data.gpa ? `📊 المعدل: **${data.gpa}**` : null,
-      data.department ? `📚 القسم: **${data.department}**` : null,
-      data.specialtyWanted ? `🎯 التخصص: **${data.specialtyWanted}**` : null,
-      data.city ? `🏙 المدينة: **${data.city}**` : null,
-      data.programType ? `📌 البرنامج: **${data.programType}**` : null,
+      data.fullName          ? `👤 الاسم: **${data.fullName}**`              : null,
+      data.phone             ? `📱 الهاتف: **${data.phone}**`                : null,
+      data.email && data.email.includes("@") ? `📧 البريد: **${data.email}**` : null,
+      data.gpa               ? `📊 المعدل: **${data.gpa}**`                  : null,
+      data.department        ? `📚 القسم: **${data.department}**`            : null,
+      data.city              ? `🏙 المحافظة: **${data.city}**`               : null,
+      data.programType       ? `📌 البرنامج: **${data.programType}**`        : null,
+      data.universityChoice1 ? `🏛 الجامعة: **${data.universityChoice1}**`   : null,
+      data.specialtyWanted   ? `🎯 التخصص: **${data.specialtyWanted}**`      : null,
     ].filter(Boolean).join("\n");
 
     addMessage("assistant", `✅ **ملخص طلب تسجيلك:**\n\n${summary}\n\n**هل تؤكد التسجيل بهذه البيانات؟**`);

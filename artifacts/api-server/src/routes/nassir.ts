@@ -104,6 +104,7 @@ router.post("/nassir/auto-register", async (req, res): Promise<void> => {
     const {
       fullName,
       phone,
+      email,
       gpa,
       department,
       city,
@@ -115,13 +116,13 @@ router.post("/nassir/auto-register", async (req, res): Promise<void> => {
       conversationId,
     } = req.body as Record<string, string>;
 
-    if (!fullName || !phone || !programType) {
-      res.status(400).json({ error: "fullName, phone, programType required" });
+    if (!fullName || !phone) {
+      res.status(400).json({ error: "fullName and phone required" });
       return;
     }
 
     const id = await autoRegisterFromNassir(
-      { fullName, phone, gpa, department, specialtyWanted, city, programType, universityWanted: universityChoice1 },
+      { fullName, phone, email, gpa, department, specialtyWanted, city, programType, universityWanted: universityChoice1 },
       "الموقع الإلكتروني",
       conversationId ? parseInt(conversationId, 10) : undefined,
     );
