@@ -14,7 +14,43 @@ interface ExtractedData {
   gpa?: string;
   department?: string;
   city?: string;
+  phone?: string;
+  email?: string;
+  programType?: string;
+  specialtyWanted?: string;
+  universityChoice1?: string;
   notes?: string;
+}
+
+// الحقول المطلوبة لإتمام التسجيل مرتّبة حسب الأولوية
+const REQUIRED_FIELDS: Array<{ key: keyof ExtractedData; label: string; question: string }> = [
+  { key: "fullName",     label: "الاسم",     question: "ما **اسمك الرباعي الكامل**؟" },
+  { key: "gpa",          label: "المعدل",    question: "ما **معدلك في الثانوية**؟ (مثال: 85% أو 425 درجة)" },
+  { key: "department",   label: "القسم",     question: "ما **قسمك**؟ (علمي / أدبي)" },
+  { key: "city",         label: "المدينة",   question: "من أي **مدينة أو محافظة** أنت؟" },
+  { key: "phone",        label: "الهاتف",    question: "ما **رقم هاتفك**؟ حتى يتواصل معك فريقنا" },
+  { key: "programType",  label: "البرنامج",  question: "أي **برنامج** يهمك؟\n\n1️⃣ مقاعد مخفضة\n2️⃣ منحة دراسية كاملة\n3️⃣ دورة تدريبية\n4️⃣ تأمين صحي" },
+];
+
+function buildMissingQueue(data: Record<string, string>): typeof REQUIRED_FIELDS {
+  return REQUIRED_FIELDS.filter((f) => !data[f.key] || data[f.key].trim() === "");
+}
+
+function parseProgramType(text: string): string {
+  if (text.includes("2") || text.includes("منح") || text.includes("منحة")) return "منحة دراسية";
+  if (text.includes("3") || text.includes("دورة")) return "دورة تدريبية";
+  if (text.includes("4") || text.includes("تأمين")) return "تأمين صحي";
+  return "مقاعد مخفضة";
+}
+
+function looksLikePhone(text: string): boolean {
+  return text.replace(/\D/g, "").length >= 9;
+}
+
+function renderContent(text: string): string {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br/>");
 }
 
 export default function NassirPage() {
@@ -27,7 +63,6 @@ export default function NassirPage() {
   const [regData, setRegData] = useState<Record<string, string>>({});
   const [regStep, setRegStep] = useState(0);
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -52,9 +87,7 @@ export default function NassirPage() {
     });
     const d = await r.json() as { id: number };
     setConversationId(d.id);
-
-    const welcome = `مرحباً بك! أنا **ناصر** 🎓\nمستشارك الأكاديمي الذكي للمؤسسة الوطنية للتنمية الشاملة.\n\nلدي معلومات كاملة عن:\n🏛 16 جامعة شريكة مع تخصصاتها الكاملة\n📊 معدلات القبول لكل تخصص\n🎯 المنح والتخفيضات المتاحة\n📝 التسجيل الذكي من صورة الاستمارة!\n\nما الذي يشغل تفكيرك اليوم؟`;
-    addMessage("assistant", welcome);
+    addMessage("assistant", `مرحباً بك! أنا **ناصر** 🎓\nمستشارك الأكاديمي الذكي للمؤسسة الوطنية للتنمية الشاملة.\n\nلدي معلومات كاملة عن:\n🏛 35+ جامعة شريكة مع تخصصاتها الكاملة\n📊 معدلات القبول لكل تخصص\n🎯 المنح والتخفيضات المتاحة\n📝 التسجيل الذكي من صورة الاستمارة!\n\nما الذي يشغل تفكيرك اليوم؟`);
   };
 
   useEffect(() => { void init(); }, []);
@@ -88,7 +121,9 @@ export default function NassirPage() {
             const data = JSON.parse(line.slice(6)) as { content?: string; done?: boolean };
             if (data.content) {
               full += data.content;
-              setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: full } : m));
+              // Strip 〔REG〕 blocks from display
+              const display = full.replace(/〔REG〕[\s\S]*?〔\/REG〕/g, "").trim();
+              setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, content: display } : m));
             }
           } catch {}
         }
@@ -100,52 +135,30 @@ export default function NassirPage() {
     setLoading(false);
   };
 
-  const handleSend = () => {
-    if (!input.trim() || !conversationId) return;
-    const text = input.trim();
+  // ── عرض الملخص النهائي وطلب التأكيد ──────────────────────────────────────
+  const showFinalSummary = (data: Record<string, string>) => {
+    const lines = [
+      data.fullName    ? `👤 الاسم: **${data.fullName}**`           : null,
+      data.phone       ? `📱 الهاتف: **${data.phone}**`              : null,
+      data.gpa         ? `📊 المعدل: **${data.gpa}**`                : null,
+      data.department  ? `📚 القسم: **${data.department}**`          : null,
+      data.specialtyWanted ? `🎯 التخصص: **${data.specialtyWanted}**` : null,
+      data.city        ? `🏙 المدينة: **${data.city}**`              : null,
+      data.programType ? `📌 البرنامج: **${data.programType}**`      : null,
+    ].filter(Boolean).join("\n");
 
-    if (regStep === 2) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, fullName: text })); addMessage("assistant", `شكراً ${text}! 😊\n\nما **معدلك** في الثانوية؟ (مثال: 85.5 أو 425)`); setRegStep(4); return; }
-    if (regStep === 4) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, gpa: text })); addMessage("assistant", "📊 ممتاز!\n\nما **قسمك**؟ (علمي / أدبي)"); setRegStep(5); return; }
-    if (regStep === 5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, department: text })); addMessage("assistant", "👍\n\nمن أي **مدينة أو محافظة**؟"); setRegStep(6); return; }
-    if (regStep === 6) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, city: text })); addMessage("assistant", "الآن أخبرني: **ما التخصص الذي تريده؟**"); setRegStep(6.5); return; }
-    if (regStep === 6.5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, specialization: text })); addMessage("assistant", "وأخيراً — **رقم هاتفك** لإتمام التسجيل:"); setRegStep(3); return; }
-    if (regStep === 3) {
-      if (text.length < 9) { addMessage("user", text); setInput(""); addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم صحيح (9 أرقام على الأقل)."); return; }
-      addMessage("user", text); setInput("");
-      const fullData = { ...regData, phone: text };
-      setRegData(fullData);
-      const programs = `اختر البرنامج المناسب:\n\n1️⃣ منحة دراسية كاملة\n2️⃣ تخفيض جامعي\n3️⃣ دورة تدريبية\n4️⃣ تأمين صحي`;
-      addMessage("assistant", programs); setRegStep(7); return;
-    }
-    if (regStep === 7) {
-      addMessage("user", text); setInput("");
-      let prog = "منح دراسية";
-      if (text.includes("2") || text.includes("تخفيض")) prog = "تخفيضات جامعية";
-      else if (text.includes("3") || text.includes("دورة")) prog = "دورات تدريبية";
-      else if (text.includes("4") || text.includes("تأمين")) prog = "تأمين طبي";
-      const d = { ...regData, programType: prog };
-      setRegData(d);
-      setExtractedData(d as ExtractedData);
-      const summary = [`👤 الاسم: **${d.fullName || "غير محدد"}**`, `📱 الهاتف: **${d.phone || ""}**`, d.gpa ? `📊 المعدل: **${d.gpa}**` : null, d.department ? `📚 القسم: **${d.department}**` : null, d.city ? `🏙 المدينة: **${d.city}**` : null, `🎯 البرنامج: **${prog}**`].filter(Boolean).join("\n");
-      addMessage("assistant", `✅ **ملخص طلبك:**\n\n${summary}\n\nهل تؤكد التسجيل؟`);
-      setRegStep(8); setAwaitingConfirm(true); return;
-    }
-    if (regStep === 8 && awaitingConfirm) {
-      const lc = text.toLowerCase();
-      const yes = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق");
-      if (yes) { addMessage("user", text); setInput(""); void handleAutoRegister(); return; }
-    }
-
-    addMessage("user", text);
-    setInput("");
-    void sendToApi(text, conversationId);
+    addMessage("assistant", `✅ **ملخص طلب تسجيلك:**\n\n${lines}\n\nهل تؤكد التسجيل؟`);
+    setRegStep(8);
+    setAwaitingConfirm(true);
   };
 
-  const handleAutoRegister = async () => {
+  // ── التسجيل التلقائي ─────────────────────────────────────────────────────
+  const handleAutoRegister = async (data?: Record<string, string>) => {
     if (!conversationId) return;
+    const finalData = data || regData;
     setLoading(true);
     try {
-      const payload = { ...regData, programType: regData.programType || "منح دراسية", conversationId: String(conversationId) };
+      const payload = { ...finalData, programType: finalData.programType || "مقاعد مخفضة", conversationId: String(conversationId) };
       const r = await fetch("/api/nassir/auto-register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,7 +167,7 @@ export default function NassirPage() {
       const d = await r.json() as { success?: boolean; registrationId?: number };
       if (d.success) {
         addMessage("assistant", `🎉 **تهانينا! تم تسجيلك بنجاح!**\n\nرقم طلبك: **#${d.registrationId}**\n\nسيتواصل معك فريقنا المتخصص خلال **24 ساعة** على رقم هاتفك المسجّل.\n\n_"الفرصة التي أمّنتها اليوم ستكون نقطة التحوّل في مسيرتك الأكاديمية"_ 🌟`);
-        setAwaitingConfirm(false); setExtractedData(null); setRegStep(0); setRegData({});
+        setAwaitingConfirm(false); setRegStep(0); setRegData({});
         setShowSuccess(true); setTimeout(() => setShowSuccess(false), 5000);
       } else {
         addMessage("assistant", "حدث خطأ أثناء التسجيل. يرجى التواصل المباشر مع فريقنا أو زيارة صفحة التسجيل.");
@@ -165,6 +178,7 @@ export default function NassirPage() {
     setLoading(false);
   };
 
+  // ── معالجة رفع الصورة ────────────────────────────────────────────────────
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !conversationId) return;
@@ -179,29 +193,149 @@ export default function NassirPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: base64, mimeType: compressedMime }),
       });
-      if (!r.ok) {
-        const errData = await r.json().catch(() => ({})) as { message?: string };
-        throw new Error(errData.message || `HTTP ${r.status}`);
-      }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json() as ExtractedData & { _error?: string };
-      if (data._error) { throw new Error(data._error); }
-      setExtractedData(data);
+      if (data._error) throw new Error(data._error);
+
+      setUploadingImage(false);
       const hasData = data.fullName || data.gpa || data.department;
+
       if (hasData) {
-        const summary = [data.fullName ? `👤 الاسم: **${data.fullName}**` : null, data.gpa ? `📊 المعدل: **${data.gpa}**` : null, data.department ? `📚 القسم: **${data.department}**` : null, data.city ? `🏙 المدينة: **${data.city}**` : null].filter(Boolean).join("\n");
-        addMessage("assistant", `✅ **استخرجت بياناتك بنجاح!**\n\n${summary}\n\nهل هذه البيانات صحيحة؟ أخبرني بـ "نعم" للمتابعة أو صحّح أي معلومة.`);
-        setRegData({ ...(data as Record<string, string>) });
-        setAwaitingConfirm(true); setRegStep(1);
+        const summaryLines = [
+          data.fullName        ? `👤 الاسم: **${data.fullName}**`             : null,
+          data.gpa             ? `📊 المعدل: **${data.gpa}**`                  : null,
+          data.department      ? `📚 القسم: **${data.department}**`            : null,
+          data.city            ? `🏙 المدينة: **${data.city}**`                : null,
+          data.phone           ? `📱 الهاتف: **${data.phone}**`                : null,
+          data.specialtyWanted ? `🎯 التخصص: **${data.specialtyWanted}**`      : null,
+          data.universityChoice1 ? `🏛 الجامعة: **${data.universityChoice1}**` : null,
+          data.programType     ? `📌 البرنامج: **${data.programType}**`        : null,
+        ].filter(Boolean).join("\n");
+
+        // Store all extracted fields
+        const initialData: Record<string, string> = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (typeof v === "string" && v.trim() !== "" && k !== "_error") {
+            initialData[k] = v.trim();
+          }
+        }
+        setRegData(initialData);
+
+        // Determine what's still missing
+        const missing = buildMissingQueue(initialData);
+
+        if (missing.length === 0) {
+          // كل البيانات المطلوبة موجودة — اعرض الملخص النهائي
+          addMessage("assistant", `✅ **استخرجت جميع بياناتك:**\n\n${summaryLines}\n\nهل تؤكد التسجيل بهذه البيانات؟`);
+          setRegStep(8);
+          setAwaitingConfirm(true);
+        } else {
+          // اسأل عن الحقل الأول الناقص مباشرة (بدون "هل هذه صحيحة؟")
+          addMessage(
+            "assistant",
+            `✅ **استخرجت بياناتك:**\n\n${summaryLines}\n\nلإتمام التسجيل أحتاج معلومة واحدة أخرى:\n\n${missing[0].question}`,
+          );
+          setRegStep(20); // وضع الحقول الناقصة الديناميكي
+        }
       } else {
         addMessage("assistant", "لم أتمكن من قراءة الاستمارة بوضوح كافٍ.\n\nلا مشكلة! أخبرني **باسمك الكامل** وأنا أكمل معك:");
+        setRegData({});
         setRegStep(2);
       }
     } catch {
+      setUploadingImage(false);
       addMessage("assistant", "حدث خطأ في قراءة الصورة. يمكنك إدخال بياناتك يدوياً — ما **اسمك الكامل**؟");
       setRegStep(2);
     }
-    setUploadingImage(false);
     if (e.target) e.target.value = "";
+  };
+
+  // ── handleSend ────────────────────────────────────────────────────────────
+  const handleSend = () => {
+    if (!input.trim() || !conversationId) return;
+    const text = input.trim();
+
+    // ── step 20: إكمال الحقول الناقصة بعد الصورة (ديناميكي) ──────────────
+    if (regStep === 20) {
+      // تحقق من رغبة التصحيح
+      if (text.includes("تعديل") || text.includes("خطأ") || text.includes("غلط") || text.toLowerCase() === "no") {
+        addMessage("user", text); setInput("");
+        addMessage("assistant", "لا مشكلة! أخبرني باسمك الكامل وأنا أبدأ من جديد:");
+        setRegData({}); setRegStep(2); return;
+      }
+
+      addMessage("user", text); setInput("");
+
+      // الحقل الحالي = أول حقل ناقص في البيانات الحالية
+      const currentMissing = buildMissingQueue(regData);
+      const currentField = currentMissing[0];
+
+      if (!currentField) {
+        showFinalSummary(regData); return;
+      }
+
+      // التحقق من صحة رقم الهاتف
+      if (currentField.key === "phone" && !looksLikePhone(text)) {
+        addMessage("assistant", "يبدو أن الرقم غير صحيح. يرجى إدخال رقم هاتف صحيح (9 أرقام على الأقل):"); return;
+      }
+
+      let value = text;
+      if (currentField.key === "programType") value = parseProgramType(text);
+
+      const updatedData = { ...regData, [currentField.key]: value };
+      setRegData(updatedData);
+
+      const stillMissing = buildMissingQueue(updatedData);
+      if (stillMissing.length === 0) {
+        showFinalSummary(updatedData);
+      } else {
+        addMessage("assistant", stillMissing[0].question);
+      }
+      return;
+    }
+
+    // ── step 8: تأكيد نهائي ───────────────────────────────────────────────
+    if (regStep === 8 && awaitingConfirm) {
+      const lc = text.toLowerCase();
+      const yes = lc.includes("نعم") || lc.includes("أكد") || lc.includes("تمام") || lc.includes("موافق") || lc.includes("صح");
+      if (yes) {
+        addMessage("user", text); setInput("");
+        void handleAutoRegister(); return;
+      }
+      const no = lc.includes("لا") || lc.includes("خطأ") || lc.includes("غلط");
+      if (no) {
+        addMessage("user", text); setInput("");
+        addMessage("assistant", "لا مشكلة! أخبرني باسمك الكامل وأبدأ معك من جديد:");
+        setRegStep(2); setRegData({}); setAwaitingConfirm(false); return;
+      }
+    }
+
+    // ── التسجيل اليدوي خطوة بخطوة ────────────────────────────────────────
+    if (regStep === 2) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, fullName: text })); addMessage("assistant", `شكراً ${text}! 😊\n\nما **معدلك** في الثانوية؟ (مثال: 85.5 أو 425)`); setRegStep(4); return; }
+    if (regStep === 4) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, gpa: text })); addMessage("assistant", "📊 ممتاز!\n\nما **قسمك**؟ (علمي / أدبي)"); setRegStep(5); return; }
+    if (regStep === 5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, department: text })); addMessage("assistant", "👍\n\nمن أي **مدينة أو محافظة**؟"); setRegStep(6); return; }
+    if (regStep === 6) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, city: text })); addMessage("assistant", "الآن أخبرني: **ما التخصص الذي تريده؟**"); setRegStep(6.5); return; }
+    if (regStep === 6.5) { addMessage("user", text); setInput(""); setRegData((p) => ({ ...p, specialtyWanted: text })); addMessage("assistant", "وأخيراً — **رقم هاتفك** لإتمام التسجيل:"); setRegStep(3); return; }
+    if (regStep === 3) {
+      if (!looksLikePhone(text)) { addMessage("user", text); setInput(""); addMessage("assistant", "يبدو أن الرقم قصير. يرجى إدخال رقم صحيح (9 أرقام على الأقل)."); return; }
+      addMessage("user", text); setInput("");
+      const fullData = { ...regData, phone: text };
+      setRegData(fullData);
+      addMessage("assistant", "أي برنامج يهمك؟\n\n1️⃣ **مقاعد مخفضة**\n2️⃣ **منحة دراسية كاملة**\n3️⃣ **دورة تدريبية**\n4️⃣ **تأمين صحي**");
+      setRegStep(7); return;
+    }
+    if (regStep === 7) {
+      addMessage("user", text); setInput("");
+      const prog = parseProgramType(text);
+      const finalData = { ...regData, programType: prog };
+      setRegData(finalData);
+      showFinalSummary(finalData); return;
+    }
+
+    // Default: إرسال إلى الذكاء الاصطناعي
+    addMessage("user", text);
+    setInput("");
+    void sendToApi(text, conversationId);
   };
 
   const QUICK_REPLIES = [
@@ -223,7 +357,7 @@ export default function NassirPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">ناصر <span className="text-primary">مساعدك الذكي</span></h1>
           <p className="text-slate-500 max-w-xl mx-auto">مستشارك الأكاديمي الذكي للتوجيه والتسجيل — 35+ جامعة شريكة • متاح 24/7</p>
           <div className="flex items-center justify-center gap-4 mt-4 flex-wrap">
-            {[["15,000+", "طالب مستفيد", GraduationCap], ["16", "جامعة شريكة", BookOpen], ["70%", "أقصى خصم", Star], ["24/7", "متاح دائماً", Heart]].map(([num, label, Icon]) => (
+            {[["15,000+", "طالب مستفيد", GraduationCap], ["35+", "جامعة شريكة", BookOpen], ["70%", "أقصى خصم", Star], ["24/7", "متاح دائماً", Heart]].map(([num, label, Icon]) => (
               <div key={label as string} className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
                 {Icon && <Icon size={16} className="text-primary" />}
                 <span className="font-bold text-primary">{num as string}</span>
@@ -244,7 +378,9 @@ export default function NassirPage() {
         </AnimatePresence>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Chat panel */}
           <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden" style={{ height: 580 }}>
+            {/* Header */}
             <div className="bg-gradient-to-l from-blue-900 via-primary to-blue-600 px-5 py-4 flex items-center gap-3 shrink-0 shadow-md">
               <div className="relative">
                 <div className="w-10 h-10 rounded-xl bg-white/25 ring-2 ring-white/40 flex items-center justify-center shadow-inner">
@@ -262,10 +398,11 @@ export default function NassirPage() {
               </div>
             </div>
 
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-gray-50">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-sm ${
+                  <div className={`max-w-[82%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
                     msg.role === "user"
                       ? "bg-gradient-to-br from-primary to-blue-700 text-white rounded-bl-sm shadow-md"
                       : "bg-white text-gray-800 border border-gray-100 rounded-br-sm shadow-md"
@@ -277,11 +414,13 @@ export default function NassirPage() {
                         <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                       </div>
                     ) : (
-                      <span dangerouslySetInnerHTML={{ __html: msg.content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>") }} />
+                      <span dangerouslySetInnerHTML={{ __html: renderContent(msg.content) }} />
                     )}
                   </div>
                 </div>
               ))}
+
+              {/* Quick replies — تظهر فقط بعد رسالة الترحيب */}
               {messages.length === 1 && !loading && (
                 <div className="flex flex-wrap gap-2 justify-end pt-2">
                   {QUICK_REPLIES.map((qr) => (
@@ -299,21 +438,32 @@ export default function NassirPage() {
                   ))}
                 </div>
               )}
+
+              {/* زر التأكيد النهائي */}
               {awaitingConfirm && regStep === 8 && (
                 <div className="flex gap-2 justify-end flex-wrap">
-                  <button onClick={() => { void handleAutoRegister(); setAwaitingConfirm(false); }}
-                    className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-5 py-2 text-sm font-bold flex items-center gap-2">
+                  <button
+                    onClick={() => { void handleAutoRegister(); setAwaitingConfirm(false); }}
+                    className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-5 py-2 text-sm font-bold flex items-center gap-2 shadow"
+                  >
                     <Check size={16} /> تأكيد التسجيل النهائي
                   </button>
-                  <button onClick={() => { setRegStep(0); setAwaitingConfirm(false); setExtractedData(null); addMessage("assistant", "لا مشكلة! كيف يمكنني مساعدتك؟"); }}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm">
+                  <button
+                    onClick={() => {
+                      setRegStep(0); setAwaitingConfirm(false); setRegData({});
+                      addMessage("assistant", "لا مشكلة! كيف يمكنني مساعدتك؟");
+                    }}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm"
+                  >
                     إلغاء
                   </button>
                 </div>
               )}
+
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Input */}
             <div className="bg-white border-t border-gray-100 px-4 py-3 shrink-0">
               <div className="flex items-end gap-2">
                 <button
@@ -329,7 +479,7 @@ export default function NassirPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder="اسألني عن تخصصك، معدلك، الجامعات..."
+                  placeholder={regStep === 20 || (regStep >= 2 && regStep <= 8) ? "اكتب إجابتك هنا..." : "اسألني عن تخصصك، معدلك، الجامعات..."}
                   rows={1}
                   disabled={loading || uploadingImage}
                   className="flex-1 resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary disabled:opacity-50"
@@ -347,6 +497,7 @@ export default function NassirPage() {
             </div>
           </div>
 
+          {/* Sidebar */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
               <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
@@ -355,7 +506,7 @@ export default function NassirPage() {
               <div className="space-y-2.5">
                 {[
                   { icon: "📸", text: "يقرأ استمارتك ويسجّلك تلقائياً" },
-                  { icon: "🏛", text: "معلومات كاملة عن 16 جامعة" },
+                  { icon: "🏛", text: "معلومات كاملة عن 35+ جامعة" },
                   { icon: "📊", text: "يحدد تخصصك بناءً على معدلك" },
                   { icon: "🎓", text: "يجد أفضل المنح والتخفيضات لك" },
                   { icon: "💬", text: "متاح 24/7 للإجابة على أسئلتك" },
@@ -436,7 +587,7 @@ function compressAndToBase64(file: File): Promise<{ base64: string; mimeType: st
           resolve({ base64: result.split(",")[1] ?? "", mimeType });
         };
         reader.onerror = reject;
-      }, mimeType, 0.75);
+      }, mimeType, 0.82);
     };
     img.onerror = reject;
     img.src = url;
