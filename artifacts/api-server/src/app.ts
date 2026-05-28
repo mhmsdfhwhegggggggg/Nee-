@@ -193,6 +193,9 @@ import express, { type Express } from "express";
 
       await pool.query(`ALTER TABLE registrations ADD COLUMN IF NOT EXISTS specialty TEXT`);
 
+      // Fix: update certificate image field type from "image" to "file" for proper frontend rendering
+      await pool.query(`UPDATE registration_form_fields SET field_type = 'file' WHERE field_key = 'certificateImage' AND field_type = 'image'`);
+
       logger.info("Database tables ensured successfully");
     } catch (err) {
       logger.error({ err }, "Failed to ensure tables");

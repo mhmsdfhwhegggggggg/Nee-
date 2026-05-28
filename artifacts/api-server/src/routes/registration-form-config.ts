@@ -149,7 +149,7 @@ router.post("/admin/registration-form-config/seed-defaults", async (req, res): P
     { fieldKey: "universityChoice1", label: "الجامعة - الخيار الأول", fieldType: "university_select", placeholder: "اختر الجامعة الأولى", required: true, options: null as string | null, sortOrder: 8 },
     { fieldKey: "universityChoice2", label: "الجامعة - الخيار الثاني (اختياري)", fieldType: "university_select", placeholder: "اختر الجامعة الثانية", required: false, options: null as string | null, sortOrder: 9 },
     { fieldKey: "universityChoice3", label: "الجامعة - الخيار الثالث (اختياري)", fieldType: "university_select", placeholder: "اختر الجامعة الثالثة", required: false, options: null as string | null, sortOrder: 10 },
-    { fieldKey: "certificateImage", label: "صورة الشهادة الثانوية العامة", fieldType: "image", placeholder: "اضغط لرفع صورة الشهادة", required: false, options: null as string | null, sortOrder: 11 },
+    { fieldKey: "certificateImage", label: "صورة الشهادة الثانوية العامة", fieldType: "file", placeholder: "اضغط لرفع صورة الشهادة", required: false, options: null as string | null, sortOrder: 11 },
     { fieldKey: "message", label: "ملاحظات إضافية (اختياري)", fieldType: "textarea", placeholder: "أي تفاصيل أخرى تود إضافتها...", required: false, options: null as string | null, sortOrder: 12 },
   ];
 

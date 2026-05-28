@@ -182,34 +182,42 @@ import { useState, useEffect } from "react";
           );
 
         case "file":
+        case "image":
           return (
             <div>
               {fileData[field.fieldKey] ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <CheckCircle2 className="text-green-600 shrink-0" size={16} />
-                  <span className="text-sm text-green-700 truncate">
-                    {fileData[field.fieldKey].name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFileData((prev) => {
-                        const n = { ...prev };
-                        delete n[field.fieldKey];
-                        return n;
-                      });
-                      setValues((prev) => ({ ...prev, [field.fieldKey]: "" }));
-                    }}
-                    className="mr-auto text-gray-400 hover:text-gray-600"
-                  >
-                    <X size={14} />
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle2 className="text-green-600 shrink-0" size={16} />
+                    <span className="text-sm text-green-700 truncate flex-1">
+                      {fileData[field.fieldKey].name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFileData((prev) => {
+                          const n = { ...prev };
+                          delete n[field.fieldKey];
+                          return n;
+                        });
+                        setValues((prev) => ({ ...prev, [field.fieldKey]: "" }));
+                      }}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <img
+                    src={fileData[field.fieldKey].base64}
+                    alt="معاينة الصورة"
+                    className="w-full max-h-48 object-contain rounded-lg border border-gray-200"
+                  />
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <Upload className="text-gray-400 mb-2" size={20} />
-                  <span className="text-sm text-gray-500">انقر لرفع الصورة</span>
-                  <span className="text-xs text-gray-400 mt-1">PNG, JPG حتى 5MB</span>
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary/30 rounded-lg cursor-pointer bg-primary/5 hover:bg-primary/10 transition-colors group">
+                  <Upload className="text-primary/60 mb-2 group-hover:text-primary transition-colors" size={24} />
+                  <span className="text-sm text-primary/80 font-medium">انقر لرفع صورة الشهادة</span>
+                  <span className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP — حتى 10MB</span>
                   <input
                     type="file"
                     className="hidden"
