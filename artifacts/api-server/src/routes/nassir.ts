@@ -15,8 +15,12 @@ import {
 const router: IRouter = Router();
 
 router.get("/nassir/settings", async (_req, res): Promise<void> => {
-  const settings = await ensureSettings();
-  res.json(settings);
+  try {
+    const settings = await ensureSettings();
+    res.json(settings);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load settings", detail: String(err) });
+  }
 });
 
 router.patch("/admin/nassir/settings", async (req, res): Promise<void> => {
@@ -35,21 +39,29 @@ router.patch("/admin/nassir/settings", async (req, res): Promise<void> => {
 });
 
 router.post("/nassir/conversations", async (req, res): Promise<void> => {
-  const platform = (req.body as Record<string, string>)?.platform || "web";
-  const [convo] = await db
-    .insert(chatConversations)
-    .values({ sessionId: randomUUID(), platform })
-    .returning();
-  res.status(201).json(convo);
+  try {
+    const platform = (req.body as Record<string, string>)?.platform || "web";
+    const [convo] = await db
+      .insert(chatConversations)
+      .values({ sessionId: randomUUID(), platform })
+      .returning();
+    res.status(201).json(convo);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create conversation", detail: String(err) });
+  }
 });
 
 router.get("/admin/nassir/conversations", async (_req, res): Promise<void> => {
-  const convos = await db
-    .select()
-    .from(chatConversations)
-    .orderBy(desc(chatConversations.updatedAt))
-    .limit(200);
-  res.json(convos);
+  try {
+    const convos = await db
+      .select()
+      .from(chatConversations)
+      .orderBy(desc(chatConversations.updatedAt))
+      .limit(200);
+    res.json(convos);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load conversations", detail: String(err) });
+  }
 });
 
 router.get("/admin/nassir/conversations/:id", async (req, res): Promise<void> => {
