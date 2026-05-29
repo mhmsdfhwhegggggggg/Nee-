@@ -136,14 +136,20 @@ export default function NassirPage() {
   const init = async () => {
     if (initialized.current) return;
     initialized.current = true;
-    const r = await fetch("/api/nassir/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ platform: "web" }),
-    });
-    const d = await r.json() as { id: number };
-    setConversationId(d.id);
-    addMessage("assistant", `مرحباً بك! أنا **ناصر** 🎓\nمستشارك الأكاديمي الذكي للمؤسسة الوطنية للتنمية الشاملة.\n\nلدي معلومات كاملة عن:\n🏛 35+ جامعة شريكة مع تخصصاتها الكاملة\n📊 معدلات القبول لكل تخصص\n🎯 المنح والتخفيضات المتاحة\n📝 التسجيل الذكي من صورة الاستمارة!\n\nما الذي يشغل تفكيرك اليوم؟`);
+    try {
+      const r = await fetch("/api/nassir/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: "web" }),
+      });
+      if (r.ok) {
+        const d = await r.json() as { id: number };
+        setConversationId(d.id);
+      }
+    } catch (e) {
+      console.error("Failed to create conversation:", e);
+    }
+        addMessage("assistant", `مرحباً بك! أنا **ناصر** 🎓\nمستشارك الأكاديمي الذكي للمؤسسة الوطنية للتنمية الشاملة.\n\nلدي معلومات كاملة عن:\n🏛 35+ جامعة شريكة مع تخصصاتها الكاملة\n📊 معدلات القبول لكل تخصص\n🎯 المنح والتخفيضات المتاحة\n📝 التسجيل الذكي من صورة الاستمارة!\n\nما الذي يشغل تفكيرك اليوم؟`);
   };
 
   useEffect(() => { void init(); }, []);
