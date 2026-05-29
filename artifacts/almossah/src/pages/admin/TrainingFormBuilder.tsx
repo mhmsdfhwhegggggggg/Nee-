@@ -89,21 +89,30 @@ export default function TrainingFormBuilder() {
 
   const fetchFields = async () => {
     setIsLoading(true);
-    const res = await fetch(`${BASE}/api/training-form/admin/fields`, {
-      headers: authHeaders(),
-    });
-    const data = await res.json();
-    setFields(Array.isArray(data) ? data : []);
-    setIsLoading(false);
+    try {
+      const res = await fetch(`${BASE}/api/training-form/admin/fields`, {
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      setFields(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to load fields:", e);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchSubmissions = async () => {
-    const res = await fetch(`${BASE}/api/training-form/admin/submissions`, {
-      headers: authHeaders(),
-    });
-    const data = await res.json();
-    setSubmissions(data.items || []);
-    setSubTotal(data.total || 0);
+    try {
+      const res = await fetch(`${BASE}/api/training-form/admin/submissions`, {
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      setSubmissions(data.items || []);
+      setSubTotal(data.total || 0);
+    } catch (e) {
+      console.error("Failed to load submissions:", e);
+    }
   };
 
   useEffect(() => {
