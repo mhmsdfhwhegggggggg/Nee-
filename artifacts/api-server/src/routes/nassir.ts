@@ -15,42 +15,73 @@ import {
 const router: IRouter = Router();
   // ── مسار ترحيل قاعدة البيانات (يُستدعى مرة واحدة فقط) ─────────────────────
   router.post("/nassir/migrate", async (_req, res): Promise<void> => {
+    const results: Record<string, unknown> = {};
     try {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS chat_conversations (
-          id SERIAL PRIMARY KEY,
-          session_id TEXT NOT NULL UNIQUE,
-          platform TEXT NOT NULL DEFAULT 'web',
-          user_identifier TEXT,
-          student_name TEXT,
-          student_intent TEXT,
-          msg_count INTEGER NOT NULL DEFAULT 0,
-          admin_takeover BOOLEAN NOT NULL DEFAULT false,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+      // Check table existence
+      const tableCheck = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name IN ('chat_conversations', 'chat_messages', 'chat_bot_settings')
       `);
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS chat_messages (
-          id SERIAL PRIMARY KEY,
-          conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
-          role TEXT NOT NULL,
-          content TEXT NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-      `);
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS chat_bot_settings (
-          id SERIAL PRIMARY KEY,
-          system_prompt TEXT NOT NULL DEFAULT 'أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة.',
-          welcome_message TEXT NOT NULL DEFAULT 'مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟',
-          is_active BOOLEAN NOT NULL DEFAULT true,
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-      `);
-      res.json({ success: true, message: "Chat tables created successfully" });
+      results.existingTables = tableCheck.rows.map((r: Record<string, string>) => r.table_name);
+
+      // Create tables
+      await pool.query(`CREATE TABLE IF NOT EXISTS chat_conversations (
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL UNIQUE,
+        platform TEXT NOT NULL DEFAULT 'web',
+        user_identifier TEXT,
+        student_name TEXT,
+        student_intent TEXT,
+        msg_count INTEGER NOT NULL DEFAULT 0,
+        admin_takeover BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
+      results.chat_conversations = 'ok';
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
+      results.chat_messages = 'ok';
+
+      await pool.query(`CREATE TABLE IF NOT EXISTS chat_bot_settings (
+        id SERIAL PRIMARY KEY,
+        system_prompt TEXT NOT NULL DEFAULT 'أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة.',
+        welcome_message TEXT NOT NULL DEFAULT 'مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`);
+      results.chat_bot_settings = 'ok';
+
+      // Add missing columns if table already existed without them
+      const cols = ['user_identifier', 'student_name', 'student_intent', 'msg_count', 'admin_takeover'];
+      for (const col of cols) {
+        try {
+          const colType = col === 'msg_count' ? 'INTEGER NOT NULL DEFAULT 0'
+            : col === 'admin_takeover' ? 'BOOLEAN NOT NULL DEFAULT false'
+            : 'TEXT';
+          await pool.query(`ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS "${col}" ${colType}`);
+        } catch (_e) { /* ignore */ }
+      }
+      results.alterColumns = 'ok';
+
+      // Test INSERT
+      const testInsert = await pool.query(
+        `INSERT INTO chat_conversations (session_id, platform) VALUES ($1, $2) RETURNING id`,
+        ['test-' + Date.now(), 'web']
+      );
+      const testId = testInsert.rows[0].id;
+      await pool.query(`DELETE FROM chat_conversations WHERE id = $1`, [testId]);
+      results.testInsert = 'ok (id=' + testId + ', deleted)';
+
+      res.json({ success: true, results });
     } catch (err) {
-      res.status(500).json({ success: false, error: String(err) });
+      res.status(500).json({ success: false, error: String(err), results });
     }
   });
 
