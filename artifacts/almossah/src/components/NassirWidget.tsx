@@ -123,7 +123,11 @@ export function NassirWidget() {
     setOpen(true);
     if (messages.length > 0) return;
     setLoading(true);
-    await createConversation();
+    try {
+      await createConversation();
+    } catch (e) {
+      console.error('Failed to create conversation:', e);
+    }
 
     const welcome = isRegisterPage
       ? `مرحباً بك! أنا **ناصر** 🎓\n\nأنت على بُعد دقيقتين من تأمين مقعدك الجامعي!\n\n📸 **الأسرع:** أرسل صورة استمارتك وسأملأ البيانات تلقائياً في ثوانٍ!\n✍️ **أو:** أخبرني بمعدلك وتخصصك المطلوب وسأجد لك أفضل جامعة بأقل تكلفة.\n\n**أكثر من 15,000 طالب** بدأوا هكذا — أنت التالي! 🌟`
