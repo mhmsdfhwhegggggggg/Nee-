@@ -380,6 +380,20 @@ export async function processMessageFull(
   const settings = await ensureSettings();
   if (!settings.isActive) return { reply: "عذراً، المساعد غير متاح حالياً. يرجى المحاولة لاحقاً.", registrationId: null };
 
+  // Phase 4: Check if admin has taken over this conversation
+  const [convo] = await db.select().from(chatConversations).where(eq(chatConversations.id, conversationId));
+  if (convo?.adminTakeover) {
+    // Save user message but don't respond with AI — admin handles it
+    await db.insert(chatMessages).values({ conversationId, role: "user", content: userContent });
+    await db.update(chatConversations)
+      .set({ updatedAt: new Date(), msgCount: (convo.msgCount ?? 0) + 1 })
+      .where(eq(chatConversations.id, conversationId));
+    return { reply: "__admin_takeover__", registrationId: null };
+  }
+
+  // Phase 3: Classify intent from user message
+  const intent = classifyStudentIntent(userContent);
+
   await db.insert(chatMessages).values({ conversationId, role: "user", content: userContent });
 
   const history = await db
@@ -407,8 +421,23 @@ export async function processMessageFull(
   const rawReply = response.choices[0]?.message?.content || "عذراً، لم أتمكن من معالجة طلبك.";
   const { clean: cleanReply, regData } = stripRegBlock(rawReply);
 
+  // Build the conversation update
+  const convoUpdate: Record<string, unknown> = {
+    updatedAt: new Date(),
+    msgCount: (convo?.msgCount ?? 0) + 1,
+  };
+  // Phase 3: persist intent if detected and not already "registered"
+  if (intent && convo?.studentIntent !== "registered") {
+    convoUpdate.studentIntent = intent;
+  }
+  // Extract student name from regData if available
+  if (regData?.fullName && !convo?.studentName) {
+    convoUpdate.studentName = regData.fullName;
+    convoUpdate.studentIntent = "registered";
+  }
+
   await db.insert(chatMessages).values({ conversationId, role: "assistant", content: cleanReply });
-  await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, conversationId));
+  await db.update(chatConversations).set(convoUpdate).where(eq(chatConversations.id, conversationId));
 
   let registrationId: number | null = null;
   if (regData?.fullName && regData?.phone) {
@@ -512,69 +541,126 @@ export interface ExtractedFormData {
   notes?: string;
 }
 
-export async function extractFormDataFromImage(imageBase64: string, mimeType: string): Promise<ExtractedFormData> {
-  const prompt = `أنت خبير في قراءة الوثائق الرسمية اليمنية سواء كانت شهادات ثانوية أو استمارات تسجيل جامعية.
+// ══════════════════════════════════════════════════════════════════════════════
+//  Phase 1: تطبيع البيانات اليمنية — Arabic normalization helpers
+// ══════════════════════════════════════════════════════════════════════════════
+const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 
-افحص الصورة بدقة شديدة واستخرج جميع البيانات المتوفرة بتنسيق JSON فقط بدون أي نص آخر:
-
-{
-  "fullName": "الاسم الرباعي الكامل للطالب كما هو مكتوب",
-  "gpa": "المعدل أو المجموع بالأرقام فقط (مثل: 87 أو 425 أو 92.5)",
-  "department": "علمي أو أدبي",
-  "city": "اسم المحافظة أو المدينة",
-  "phone": "رقم الهاتف إن وجد في الاستمارة",
-  "email": "البريد الإلكتروني إن وجد",
-  "programType": "نوع البرنامج المطلوب إن ذُكر (مقاعد مخفضة أو منحة دراسية أو تأمين صحي أو دورة تدريبية)",
-  "specialtyWanted": "التخصص المطلوب إن ذُكر في الاستمارة",
-  "universityChoice1": "الجامعة الأولى المختارة إن ذُكرت",
-  "notes": "رقم الجلوس أو السنة أو أي معلومة إضافية مفيدة"
+function arToEn(s: string): string {
+  return s.replace(/[٠١٢٣٤٥٦٧٨٩]/g, (c) => String(AR_DIGITS.indexOf(c)));
 }
 
-تعليمات استخراج دقيقة:
-- الاسم: ابحث عن حقل يحمل تسمية (اسم الطالب) أو (الاسم الرباعي) أو (الاسم) وانسخه كاملاً بدون تغيير
-- المعدل: ابحث عن (المعدل) أو (المجموع) أو (الدرجة الكلية) أو (النسبة المئوية) واكتب الرقم فقط
-- القسم: ابحث عن (القسم) أو (الفرع) أو (Scientific/Literary) — أعد **بالعربية فقط**: "علمي" أو "أدبي" بغض النظر عن لغة الوثيقة
-- المدينة: ابحث عن (المحافظة) أو (المدينة) أو (مكان الإقامة)
-- الهاتف: ابحث عن (رقم الهاتف) أو (الجوال) أو (الموبايل) أو أي تسلسل رقمي يبدأ بـ 7 ومكون من 9 أرقام
-- البريد الإلكتروني: ابحث عن أي عنوان يحتوي على @
-- التخصص: ابحث عن (التخصص المطلوب) أو (الكلية) أو (الشعبة الجامعية)
-- الجامعة: ابحث عن (الجامعة الأولى) أو (الجامعة المفضلة) أو (المؤسسة التعليمية)
-- إذا لم تقرأ حقلاً بوضوح كافٍ اتركه "" ولا تخمّن
-- أعد JSON فقط بدون شرح أو مقدمة أو نص إضافي`;
+export function normalizeGPA(raw: string): string {
+  const s = arToEn(raw).replace(/[^\d.]/g, "");
+  const n = parseFloat(s);
+  if (isNaN(n)) return raw.trim();
+  // Convert /500 score to percentage
+  if (n > 100) return String(Math.round((n / 500) * 100));
+  return String(n);
+}
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Vision timeout after 25s")), 25000),
+export function normalizePhone(raw: string): string {
+  let d = arToEn(raw).replace(/\D/g, "");
+  if (d.startsWith("00967")) d = d.slice(5);
+  else if (d.startsWith("967")) d = d.slice(3);
+  return d;
+}
+
+export function normalizeDepartment(raw: string): string {
+  const lc = (raw || "").toLowerCase();
+  if (lc.includes("علمي") || lc.includes("scien") || lc.match(/\b1\b/)) return "علمي";
+  if (lc.includes("أدبي") || lc.includes("ادبي") || lc.includes("liter") || lc.match(/\b2\b/)) return "أدبي";
+  return raw.trim();
+}
+
+function normalizeExtracted(raw: ExtractedFormData): ExtractedFormData {
+  const out: ExtractedFormData = { ...raw };
+  if (out.gpa) out.gpa = normalizeGPA(out.gpa);
+  if (out.phone) out.phone = normalizePhone(out.phone);
+  if (out.department) out.department = normalizeDepartment(out.department);
+  if (out.programType) {
+    const pt = out.programType.toLowerCase();
+    if (pt.includes("منح") || pt.includes("grant")) out.programType = "منح دراسية";
+    else if (pt.includes("تخفيض") || pt.includes("discount") || pt.includes("مقاعد")) out.programType = "تخفيضات جامعية";
+    else if (pt.includes("تأمين") || pt.includes("insur")) out.programType = "تأمين طبي";
+    else if (pt.includes("أكاديم") || pt.includes("برامج")) out.programType = "برامج أكاديمية";
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Phase 3: تصنيف نية الطالب — Student intent classification
+// ══════════════════════════════════════════════════════════════════════════════
+export function classifyStudentIntent(message: string): "interested" | "hesitant" | null {
+  const m = message.toLowerCase();
+  const interestedKw = ["سجلني", "أريد التسجيل", "كيف أسجل", "سجل", "أنا مهتم", "نعم", "أكيد", "تمام", "موافق", "خلاص", "ابدأ", "هيا", "جاهز", "أبغى", "اشترك", "اشتراك", "أريد", "أبي"];
+  const hesitantKw = ["سأفكر", "لاحقاً", "ربما", "مش متأكد", "الرسوم", "غالي", "مكلف", "بعدين", "بعد فترة", "لا أعرف", "مو متأكد", "تعبنا", "صعب"];
+  if (interestedKw.some((k) => m.includes(k))) return "interested";
+  if (hesitantKw.some((k) => m.includes(k))) return "hesitant";
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  Phase 1: OCR محسّن مع Structured JSON + Validation + Normalization
+// ══════════════════════════════════════════════════════════════════════════════
+export async function extractFormDataFromImage(imageBase64: string, mimeType: string): Promise<ExtractedFormData> {
+  const prompt = `أنت نظام OCR متخصص في قراءة الوثائق الرسمية اليمنية (شهادات ثانوية، استمارات تسجيل جامعية).
+
+مهمتك الوحيدة: استخرج البيانات وأعدها بتنسيق JSON صارم بدون أي نص آخر قبله أو بعده.
+
+الناتج المطلوب (JSON فقط):
+{
+  "fullName": "الاسم الرباعي الكامل — انسخه حرفياً كما هو مكتوب في المستند",
+  "gpa": "رقم المعدل أو المجموع — أرقام فقط (أمثلة: 87.5 أو 425 أو 92) — لا تضع %",
+  "department": "علمي أو أدبي — بالعربية فقط بغض النظر عن لغة الوثيقة",
+  "city": "اسم المحافظة أو المدينة فقط",
+  "phone": "الأرقام فقط بدون مسافات أو شرطات",
+  "email": "البريد الإلكتروني كاملاً إن وجد",
+  "programType": "منح دراسية أو تخفيضات جامعية أو تأمين طبي أو برامج أكاديمية — فارغ إن لم يُذكر",
+  "specialtyWanted": "التخصص المطلوب بالعربية إن ذُكر صراحةً",
+  "universityChoice1": "اسم الجامعة الأولى إن ذُكر"
+}
+
+قواعد الاستخراج الصارمة:
+1. الاسم: ابحث عن (اسم الطالب / الاسم الرباعي / الاسم الكامل) — انسخه كاملاً بدون تعديل
+2. المعدل: ابحث عن (المعدل / المجموع / الدرجة / النسبة) — أرقام فقط — إذا كان /500 أو /480 احسب النسبة المئوية
+3. القسم: اكتب "علمي" أو "أدبي" فقط — إذا رأيت Scientific اكتب "علمي"، Literary اكتب "أدبي"
+4. الهاتف: أرقام فقط — ابحث عن تسلسل يبدأ بـ 7 ويحتوي 9 أرقام
+5. إذا لم يكن الحقل موجوداً أو غير واضح: أعد "" (فارغ) — لا تخمّن أبداً
+6. ⚠️ أعد JSON نقياً فقط — لا شرح، لا مقدمة، لا نص قبل { أو بعد }`;
+
+  const timeout = new Promise<never>((_, rej) =>
+    setTimeout(() => rej(new Error("Vision timeout after 28s")), 28000),
   );
 
-  const apiCall = groq.chat.completions.create({
+  const call = groq.chat.completions.create({
     model: GROQ_VISION_MODEL,
-    max_tokens: 400,
+    max_tokens: 500,
     temperature: 0,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-        ],
-      },
-    ],
+    messages: [{
+      role: "user",
+      content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+      ],
+    }],
   });
 
   try {
-    const response = await Promise.race([apiCall, timeoutPromise]);
-    const text = response.choices[0]?.message?.content || "{}";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const response = await Promise.race([call, timeout]);
+    const rawText = response.choices[0]?.message?.content || "{}";
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return {};
     const parsed = JSON.parse(jsonMatch[0]) as ExtractedFormData;
-    // Clean up empty strings — treat "" as missing
+
+    // Phase 1: clean + normalize
     const clean: ExtractedFormData = {};
     for (const [k, v] of Object.entries(parsed)) {
       if (typeof v === "string" && v.trim() !== "") {
         (clean as Record<string, string>)[k] = v.trim();
       }
     }
-    return clean;
+    return normalizeExtracted(clean);
   } catch (err) {
     throw new Error(`Vision API error: ${err instanceof Error ? err.message : String(err)}`);
   }

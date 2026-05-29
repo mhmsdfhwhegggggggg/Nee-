@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { getOrCreateConversation, processMessageFull } from "../../lib/chatHelper";
+import { db, chatConversations, chatMessages } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "almossah_nassir_2024";
@@ -99,12 +101,28 @@ async function handleFBEvent(event: Record<string, unknown>, platform: string) {
     return;
   }
 
-  // AI conversation via unified master prompt
+  // Get or create conversation
   const convo = await getOrCreateConversation(platform, senderId);
+
+  // Phase 4: If admin has taken over, silently save message — admin will reply from dashboard
+  if (convo.adminTakeover) {
+    await db.insert(chatMessages).values({ conversationId: convo.id, role: "user", content: text });
+    await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, convo.id));
+    await sendFBText(
+      senderId,
+      "💬 تم استلام رسالتك وسيرد عليك أحد مستشارينا قريباً. 👨‍💼",
+      token,
+    );
+    return;
+  }
+
+  // AI conversation via unified master prompt
   const platformLabel = platform === "instagram" ? "انستقرام" : "فيسبوك";
   const { reply, registrationId } = await processMessageFull(convo.id, text, platformLabel);
 
-  await sendFBText(senderId, reply, token);
+  if (reply !== "__admin_takeover__") {
+    await sendFBText(senderId, reply, token);
+  }
 
   // If auto-registered, send success message
   if (registrationId) {
@@ -115,11 +133,13 @@ async function handleFBEvent(event: Record<string, unknown>, platform: string) {
     );
   }
 
-  await sendFBQuickReplies(senderId, "هل تريد شيئاً آخر؟", [
-    { content_type: "text", title: "🏠 القائمة", payload: "menu" },
-    { content_type: "text", title: "📝 سجّل الآن", payload: "register" },
-    { content_type: "text", title: "📞 تواصل", payload: "contact" },
-  ], token);
+  if (reply !== "__admin_takeover__") {
+    await sendFBQuickReplies(senderId, "هل تريد شيئاً آخر؟", [
+      { content_type: "text", title: "🏠 القائمة", payload: "menu" },
+      { content_type: "text", title: "📝 سجّل الآن", payload: "register" },
+      { content_type: "text", title: "📞 تواصل", payload: "contact" },
+    ], token);
+  }
 }
 
 async function sendFBText(recipientId: string, text: string, token: string) {

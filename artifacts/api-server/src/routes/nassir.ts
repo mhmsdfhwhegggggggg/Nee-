@@ -76,6 +76,151 @@ router.delete("/admin/nassir/conversations/:id", async (req, res): Promise<void>
   res.sendStatus(204);
 });
 
+// ── Phase 4: Admin sends a message into a conversation (bypasses AI) ─────────
+router.post("/admin/nassir/conversations/:id/send", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const { message } = req.body as { message?: string };
+  if (!message?.trim()) {
+    res.status(400).json({ error: "message required" });
+    return;
+  }
+  const [convo] = await db.select().from(chatConversations).where(eq(chatConversations.id, id));
+  if (!convo) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+
+  // Save admin message to DB as 'admin' role (shown differently in the widget)
+  const [savedMsg] = await db
+    .insert(chatMessages)
+    .values({ conversationId: id, role: "admin", content: message.trim() })
+    .returning();
+
+  await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, id));
+
+  // Deliver to the user's platform
+  const delivered = await deliverAdminMessage(convo.platform, convo.userIdentifier, message.trim());
+
+  res.json({ success: true, message: savedMsg, delivered });
+});
+
+// ── Phase 4: Toggle admin takeover for a conversation ────────────────────────
+router.patch("/admin/nassir/conversations/:id/takeover", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const { takeover } = req.body as { takeover?: boolean };
+  if (typeof takeover !== "boolean") {
+    res.status(400).json({ error: "takeover (boolean) required" });
+    return;
+  }
+  const [convo] = await db
+    .update(chatConversations)
+    .set({ adminTakeover: takeover, updatedAt: new Date() })
+    .where(eq(chatConversations.id, id))
+    .returning();
+  if (!convo) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  // When releasing takeover on Facebook/Instagram, pass thread control back to AI bot
+  if (!takeover && convo.userIdentifier && (convo.platform === "facebook" || convo.platform === "instagram")) {
+    const token = convo.platform === "instagram"
+      ? (process.env.INSTAGRAM_ACCESS_TOKEN || "")
+      : (process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "");
+    if (token) {
+      await passThreadControlToBot(convo.userIdentifier, token).catch(() => {});
+    }
+  }
+
+  res.json(convo);
+});
+
+// ── Phase 4: SSE live stream — admin dashboard real-time monitoring ───────────
+router.get("/admin/nassir/live", async (_req, res): Promise<void> => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.flushHeaders();
+
+  const sendSnapshot = async () => {
+    const convos = await db
+      .select()
+      .from(chatConversations)
+      .orderBy(desc(chatConversations.updatedAt))
+      .limit(100);
+    res.write(`data: ${JSON.stringify({ type: "snapshot", convos })}\n\n`);
+  };
+
+  // Send initial snapshot immediately
+  await sendSnapshot();
+
+  // Poll every 5 seconds
+  const interval = setInterval(async () => {
+    try {
+      await sendSnapshot();
+    } catch {
+      clearInterval(interval);
+    }
+  }, 5000);
+
+  res.on("close", () => clearInterval(interval));
+});
+
+// ── Deliver message to social platform ────────────────────────────────────────
+async function deliverAdminMessage(platform: string, userId: string | null | undefined, text: string): Promise<boolean> {
+  if (!userId) return false;
+
+  if (platform === "facebook") {
+    const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "";
+    if (!token) return false;
+    const res = await fetch("https://graph.facebook.com/v19.0/me/messages", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: { id: userId }, message: { text } }),
+    });
+    return res.ok;
+  }
+
+  if (platform === "instagram") {
+    const token = process.env.INSTAGRAM_ACCESS_TOKEN || "";
+    if (!token) return false;
+    const res = await fetch("https://graph.facebook.com/v19.0/me/messages", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: { id: userId }, message: { text } }),
+    });
+    return res.ok;
+  }
+
+  if (platform === "telegram") {
+    const token = process.env.TELEGRAM_BOT_TOKEN || "";
+    if (!token) return false;
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: userId, text }),
+    });
+    return res.ok;
+  }
+
+  // For web/other platforms: message is saved to DB, widget will pick it up on next poll
+  return true;
+}
+
+// ── Facebook Handover Protocol: pass thread control back to AI (bot) ──────────
+async function passThreadControlToBot(userId: string, token: string): Promise<void> {
+  await fetch("https://graph.facebook.com/v19.0/me/pass_thread_control", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recipient: { id: userId },
+      target_app_id: "263902037430900", // Messenger Platform default inbox app ID
+      metadata: "nassir_ai_resumed",
+    }),
+  });
+}
+
 router.post("/nassir/vision/extract", async (req, res): Promise<void> => {
   const { imageBase64, mimeType } = req.body as { imageBase64?: string; mimeType?: string };
   if (!imageBase64) {
@@ -127,7 +272,6 @@ router.post("/nassir/auto-register", async (req, res): Promise<void> => {
       conversationId ? parseInt(conversationId, 10) : undefined,
     );
 
-    // Also fill university choices if given
     if (id && (universityChoice2 || universityChoice3)) {
       await db
         .update(registrationsTable)
@@ -176,6 +320,15 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
     return;
   }
 
+  // Phase 4: Admin takeover — save message but don't AI-respond
+  if (convo.adminTakeover) {
+    await db.insert(chatMessages).values({ conversationId: id, role: "user", content });
+    await db.update(chatConversations).set({ updatedAt: new Date() }).where(eq(chatConversations.id, id));
+    res.write(`data: ${JSON.stringify({ adminTakeover: true, done: true })}\n\n`);
+    res.end();
+    return;
+  }
+
   await db.insert(chatMessages).values({ conversationId: id, role: "user", content });
 
   const history = await db
@@ -184,14 +337,15 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
     .where(eq(chatMessages.conversationId, id))
     .orderBy(chatMessages.createdAt);
 
-  // Use DB prompt if admin has customised it; otherwise fall back to master prompt
   const sysPrompt = settings.systemPrompt.includes("〔REG〕")
     ? settings.systemPrompt
     : NASSIR_MASTER_PROMPT;
 
   const msgs: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: sysPrompt },
-    ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ...history
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
   ];
 
   let fullResponse = "";
@@ -208,7 +362,6 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
       const delta = chunk.choices[0]?.delta?.content;
       if (delta) {
         fullResponse += delta;
-        // Stream to frontend — client strips the 〔REG〕 block itself
         res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
       }
     }
@@ -219,10 +372,8 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
     );
   }
 
-  // ── Detect & process 〔REG〕 block ────────────────────────────────────────
   const { clean: cleanResponse, regData } = stripRegBlock(fullResponse);
 
-  // Save CLEAN response to DB (without the REG block)
   await db.insert(chatMessages).values({
     conversationId: id,
     role: "assistant",
@@ -230,7 +381,7 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
   });
   await db
     .update(chatConversations)
-    .set({ updatedAt: new Date() })
+    .set({ updatedAt: new Date(), msgCount: (convo.msgCount ?? 0) + 1 })
     .where(eq(chatConversations.id, id));
 
   if (regData?.fullName && regData?.phone) {
