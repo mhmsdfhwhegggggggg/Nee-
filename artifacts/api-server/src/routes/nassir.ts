@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, chatConversations, chatMessages, chatBotSettings, registrationsTable } from "@workspace/db";
+import { db, chatConversations, chatMessages, chatBotSettings, registrationsTable, pool } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
