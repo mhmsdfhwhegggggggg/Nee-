@@ -1,5 +1,40 @@
 import { Router, type IRouter } from "express";
-import { db, chatConversations, chatMessages, chatBotSettings, registrationsTable } from "@workspace/db";
+import { db, chatConversations, chatMessages, chatBotSettings, registrationsTable, pool } from "@workspace/db";
+
+// ── إنشاء جداول المحادثة إن لم تكن موجودة ─────────────────────────────────
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL UNIQUE,
+        platform TEXT NOT NULL DEFAULT 'web',
+        user_identifier TEXT,
+        student_name TEXT,
+        student_intent TEXT,
+        msg_count INTEGER NOT NULL DEFAULT 0,
+        admin_takeover BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS chat_bot_settings (
+        id SERIAL PRIMARY KEY,
+        system_prompt TEXT NOT NULL DEFAULT 'أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة.',
+        welcome_message TEXT NOT NULL DEFAULT 'مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+  } catch (_e) { /* tables may already exist */ }
+})();
+
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
@@ -116,7 +151,7 @@ router.post("/admin/nassir/conversations/:id/send", async (req, res): Promise<vo
   res.json({ success: true, message: savedMsg, delivered });
 });
 
-// ── Phase 4: Toggle admin takeover for a conversation ────────────────────────
+// ── Phase 4: Toggle admin takeover for a conversation ──────────────────────���─
 router.patch("/admin/nassir/conversations/:id/takeover", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   const { takeover } = req.body as { takeover?: boolean };
