@@ -148,8 +148,11 @@ router.post("/nassir/conversations", async (req, res): Promise<void> => {
       .values({ sessionId: randomUUID(), platform })
       .returning();
     res.status(201).json(convo);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to create conversation", detail: String(err) });
+  } catch (err: unknown) {
+    const e = err as Record<string, unknown>;
+    const detail = (e?.cause as Record<string,unknown>)?.message || (e?.message as string) || String(err);
+    const pgErr = (e?.cause as Record<string,unknown>)?.code || '';
+    res.status(500).json({ error: "Failed to create conversation", detail, pgErr });
   }
 });
 
@@ -515,4 +518,21 @@ router.post("/nassir/conversations/:id/messages", async (req, res): Promise<void
   res.end();
 });
 
+
+// Simple DB connectivity test
+  router.get("/nassir/dbtest", async (_req, res): Promise<void> => {
+    try {
+      const r = await pool.query("SELECT 1 AS ok, version() AS pg_version");
+      res.json({ db: "ok", version: r.rows[0].pg_version });
+    } catch (err: unknown) {
+      const e = err as Record<string, unknown>;
+      const cause = e?.cause as Record<string, unknown> | undefined;
+      res.status(500).json({
+        db: "error",
+        message: (e?.message as string) || String(err),
+        causeMessage: (cause?.message as string) || null,
+        causeCode: (cause?.code as string) || null,
+      });
+    }
+  });
 export default router;
