@@ -197,7 +197,7 @@ import express, { type Express } from "express";
       await pool.query(`UPDATE registration_form_fields SET field_type = 'file' WHERE field_key = 'certificateImage' AND field_type = 'image'`);
 
 
-        // ── جداول ناصر (المساعد الذكي) ──────────────────────────────────────────
+        // Chat tables for Nassir AI
         await pool.query(`
           CREATE TABLE IF NOT EXISTS chat_conversations (
             id SERIAL PRIMARY KEY,
@@ -224,12 +224,13 @@ import express, { type Express } from "express";
         await pool.query(`
           CREATE TABLE IF NOT EXISTS chat_bot_settings (
             id SERIAL PRIMARY KEY,
-            system_prompt TEXT NOT NULL DEFAULT 'أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة.',
-            welcome_message TEXT NOT NULL DEFAULT 'مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟',
+            system_prompt TEXT NOT NULL DEFAULT '',
+            welcome_message TEXT NOT NULL DEFAULT '',
             is_active BOOLEAN NOT NULL DEFAULT true,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
           );
         `);
+
         logger.info("Database tables ensured successfully");
     } catch (err) {
       logger.error({ err }, "Failed to ensure tables");
