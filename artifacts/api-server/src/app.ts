@@ -198,8 +198,7 @@ import express, { type Express } from "express";
 
       logger.info("Database tables ensured successfully");
     } catch (err) {
-      logger.error({ err }, "Failed to ensure tables");
-      throw err;
+      logger.error({ err }, "ensureTables non-fatal warning — DB may be waking up");
     }
   }
 
@@ -235,13 +234,13 @@ import express, { type Express } from "express";
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  app.use(async (_req, res, next) => {
+  app.use(async (_req, _res, next) => {
     try {
       await tablesReady;
-      next();
     } catch {
-      res.status(500).json({ error: "Database initialization failed" });
+      // DB may be waking up (Neon cold start) — let individual routes handle their own errors
     }
+    next();
   });
 
   app.use(
