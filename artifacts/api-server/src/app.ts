@@ -196,46 +196,7 @@ import express, { type Express } from "express";
       // Fix: update certificate image field type from "image" to "file" for proper frontend rendering
       await pool.query(`UPDATE registration_form_fields SET field_type = 'file' WHERE field_key = 'certificateImage' AND field_type = 'image'`);
 
-
-        // Chat tables for Nassir AI (non-fatal if fails)
-        try {
-          await pool.query(`
-            CREATE TABLE IF NOT EXISTS chat_conversations (
-              id SERIAL PRIMARY KEY,
-              session_id TEXT NOT NULL UNIQUE,
-              platform TEXT NOT NULL DEFAULT 'web',
-              user_identifier TEXT,
-              student_name TEXT,
-              student_intent TEXT,
-              msg_count INTEGER NOT NULL DEFAULT 0,
-              admin_takeover BOOLEAN NOT NULL DEFAULT false,
-              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-          `);
-          await pool.query(`
-            CREATE TABLE IF NOT EXISTS chat_messages (
-              id SERIAL PRIMARY KEY,
-              conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
-              role TEXT NOT NULL,
-              content TEXT NOT NULL,
-              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-          `);
-          await pool.query(`
-            CREATE TABLE IF NOT EXISTS chat_bot_settings (
-              id SERIAL PRIMARY KEY,
-              system_prompt TEXT NOT NULL DEFAULT '',
-              welcome_message TEXT NOT NULL DEFAULT '',
-              is_active BOOLEAN NOT NULL DEFAULT true,
-              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-          `);
-        } catch (_chatErr) {
-          // chat tables already exist or minor issue — non-fatal
-        }
-
-              logger.info("Database tables ensured successfully");
+      logger.info("Database tables ensured successfully");
     } catch (err) {
       logger.error({ err }, "Failed to ensure tables");
       throw err;
