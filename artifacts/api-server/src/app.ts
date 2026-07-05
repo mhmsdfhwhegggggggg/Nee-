@@ -128,6 +128,10 @@ import express, { type Express } from "express";
           university_choice_1 TEXT,
           university_choice_2 TEXT,
           university_choice_3 TEXT,
+          specialization_choice_1 TEXT,
+          specialization_choice_2 TEXT,
+          specialization_choice_3 TEXT,
+          extra_data JSONB,
           status TEXT NOT NULL DEFAULT 'pending',
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -140,6 +144,10 @@ import express, { type Express } from "express";
         { col: 'university_choice_1', type: 'TEXT' },
         { col: 'university_choice_2', type: 'TEXT' },
         { col: 'university_choice_3', type: 'TEXT' },
+        { col: 'specialization_choice_1', type: 'TEXT' },
+        { col: 'specialization_choice_2', type: 'TEXT' },
+        { col: 'specialization_choice_3', type: 'TEXT' },
+        { col: 'extra_data', type: 'JSONB' },
         { col: 'certificate_image_url', type: 'TEXT' },
         { col: 'updated_at', type: 'TIMESTAMPTZ NOT NULL DEFAULT NOW()' },
       ];
@@ -192,6 +200,70 @@ import express, { type Express } from "express";
       `);
 
       await pool.query(`ALTER TABLE registrations ADD COLUMN IF NOT EXISTS specialty TEXT`);
+
+      // الجداول الجديدة: الجامعات والتخصصات (نظام الارتباط بالمعدل)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS universities (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          logo_url TEXT,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          enabled BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS university_specializations (
+          id SERIAL PRIMARY KEY,
+          university_id INTEGER NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          category TEXT,
+          min_gpa REAL NOT NULL DEFAULT 0,
+          track TEXT NOT NULL DEFAULT 'both',
+          duration_years INTEGER,
+          annual_fees TEXT,
+          notes TEXT,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          enabled BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      // جدول المحادثات للمساعد الذكي ناصر
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+          id SERIAL PRIMARY KEY,
+          session_id TEXT NOT NULL UNIQUE,
+          platform TEXT NOT NULL DEFAULT 'web',
+          user_identifier TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS chat_messages (
+          id SERIAL PRIMARY KEY,
+          conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS chat_bot_settings (
+          id SERIAL PRIMARY KEY,
+          system_prompt TEXT NOT NULL DEFAULT 'أنت ناصر، مساعد ذكي للمؤسسة الوطنية للتنمية الشاملة.',
+          welcome_message TEXT NOT NULL DEFAULT 'مرحباً! أنا ناصر 👋 كيف يمكنني مساعدتك؟',
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
 
       // Fix: update certificate image field type from "image" to "file" for proper frontend rendering
       await pool.query(`UPDATE registration_form_fields SET field_type = 'file' WHERE field_key = 'certificateImage' AND field_type = 'image'`);
@@ -259,4 +331,3 @@ import express, { type Express } from "express";
   app.use("/api", router);
 
   export default app;
-  
