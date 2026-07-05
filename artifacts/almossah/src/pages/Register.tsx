@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Loader2, CheckCircle2, Upload, X, Bot, PenLine, ChevronLeft } from "lucide-react";
+import {
+  GraduationCap, Loader2, CheckCircle2, Upload, X,
+  Bot, PenLine, ChevronLeft, AlertCircle, CheckCircle, Lock
+} from "lucide-react";
 
 interface FormField {
   id: number;
@@ -23,6 +26,21 @@ interface FormField {
   required: boolean;
   options: string[] | null;
   sortOrder: number;
+}
+
+interface Specialization {
+  id: number;
+  universityId: number;
+  name: string;
+  category: string | null;
+  minGpa: number;
+  track: string; // "scientific" | "literary" | "both"
+}
+
+interface University {
+  id: number;
+  name: string;
+  specializations: Specialization[];
 }
 
 type RegMode = "select" | "manual" | "nassir";
@@ -40,18 +58,35 @@ export default function Register() {
   const [fileData, setFileData] = useState<Record<string, { name: string; base64: string }>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // Universities for smart dropdowns
+  const [universities, setUniversities] = useState<University[]>([]);
+
+  // Load form fields
   useEffect(() => {
     fetch(`${BASE}/api/registration-form-config`)
       .then((r) => r.json())
-      .then((data) => {
-        setFields(Array.isArray(data) ? data : []);
-        setIsLoading(false);
-      })
+      .then((data) => { setFields(Array.isArray(data) ? data : []); setIsLoading(false); })
       .catch(() => setIsLoading(false));
   }, []);
 
+  // Load universities (for university_select & specialization_select)
+  useEffect(() => {
+    fetch(`${BASE}/api/universities`)
+      .then((r) => r.json())
+      .then((data) => setUniversities(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
   const handleChange = (key: string, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      // When university changes, clear related specialization
+      if (fields.find(f => f.fieldKey === key && f.fieldType === "university_select")) {
+        const specField = fields.find(f => f.fieldType === "specialization_select");
+        if (specField) next[specField.fieldKey] = "";
+      }
+      return next;
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
@@ -66,69 +101,225 @@ export default function Register() {
     reader.readAsDataURL(file);
   };
 
+  // --- Smart helpers for university/specialization ---
+
+  // Student's GPA as a number (0 if not entered)
+  const studentGpa = useMemo(() => parseFloat(values["gpa"] || "0") || 0, [values]);
+
+  // Student's track: "scientific" | "literary" | ""
+  const studentTrack = useMemo(() => {
+    const dep = values["department"] || "";
+    if (dep === "علمي") return "scientific";
+    if (dep === "أدبي") return "literary";
+    return "";
+  }, [values]);
+
+  // Find the first selected university (from any university_select field)
+  const selectedUniversity = useMemo(() => {
+    const uniFields = fields.filter(f => f.fieldType === "university_select");
+    for (const f of uniFields) {
+      const uniName = values[f.fieldKey];
+      if (uniName) {
+        const found = universities.find(u => u.name === uniName);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, [fields, values, universities]);
+
+  // Get specializations for the selected university, annotated with availability
+  const annotatedSpecs = useMemo(() => {
+    if (!selectedUniversity) return [];
+    return selectedUniversity.specializations.map(s => {
+      const trackOk =
+        s.track === "both" ||
+        (s.track === "scientific" && studentTrack === "scientific") ||
+        (s.track === "literary" && studentTrack === "literary") ||
+        studentTrack === "";
+      const gpaOk = studentGpa === 0 || studentGpa >= s.minGpa;
+      return { ...s, trackOk, gpaOk, available: trackOk && gpaOk };
+    });
+  }, [selectedUniversity, studentGpa, studentTrack]);
+
+  // Group annotated specs by category
+  const specsByCategory = useMemo(() => {
+    const map: Record<string, typeof annotatedSpecs> = {};
+    for (const s of annotatedSpecs) {
+      const cat = s.category || "عام";
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(s);
+    }
+    return map;
+  }, [annotatedSpecs]);
+
+  const availableCount = useMemo(() => annotatedSpecs.filter(s => s.available).length, [annotatedSpecs]);
+
+  // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     for (const field of fields) {
       const val =
         field.fieldType === "select_with_other" && values[field.fieldKey] === "__other__"
           ? otherValues[field.fieldKey]
           : values[field.fieldKey];
       if (field.required && !val?.trim()) {
-        toast({
-          variant: "destructive",
-          title: "حقل مطلوب",
-          description: `يرجى ملء حقل "${field.label}"`,
-        });
+        toast({ variant: "destructive", title: "حقل مطلوب", description: `يرجى ملء حقل "${field.label}"` });
         return;
       }
     }
-
     setIsSubmitting(true);
     try {
-      const body: Record<string, string> = {
-        registrationSource: "manual",
-      };
+      const body: Record<string, string> = { registrationSource: "manual" };
       for (const field of fields) {
         let val = values[field.fieldKey] || "";
-        if (field.fieldType === "select_with_other" && val === "__other__") {
-          val = otherValues[field.fieldKey] || "";
-        }
-        if (field.fieldKey === "certificateImage") {
-          body["certificateImageUrl"] = val;
-        } else {
-          body[field.fieldKey] = val;
-        }
+        if (field.fieldType === "select_with_other" && val === "__other__") val = otherValues[field.fieldKey] || "";
+        if (field.fieldKey === "certificateImage") body["certificateImageUrl"] = val;
+        else body[field.fieldKey] = val;
       }
-
       const res = await fetch(`${BASE}/api/registrations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
-
-      if (res.ok) {
-        setSubmitted(true);
-        toast({ title: "تم إرسال طلبك بنجاح" });
-      } else {
-        const data = await res.json();
-        throw new Error(data.error || data.message || "حدث خطأ");
-      }
+      if (res.ok) { setSubmitted(true); toast({ title: "تم إرسال طلبك بنجاح" }); }
+      else { const data = await res.json(); throw new Error(data.error || data.message || "حدث خطأ"); }
     } catch (err: unknown) {
-      toast({
-        variant: "destructive",
-        title: "خطأ في الإرسال",
-        description: err instanceof Error ? err.message : "حدث خطأ أثناء الإرسال، يرجى المحاولة لاحقاً",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      toast({ variant: "destructive", title: "خطأ في الإرسال", description: err instanceof Error ? err.message : "حدث خطأ" });
+    } finally { setIsSubmitting(false); }
   };
 
-  const renderField = (field: FormField) => {
+  // --- Field renderers ---
+  const renderUniversitySelect = (field: FormField) => {
+    const value = values[field.fieldKey] || "";
+    return (
+      <Select value={value} onValueChange={(v) => handleChange(field.fieldKey, v)}>
+        <SelectTrigger>
+          <SelectValue placeholder={field.placeholder || "اختر الجامعة..."} />
+        </SelectTrigger>
+        <SelectContent className="max-h-60 overflow-y-auto">
+          {universities.map((u) => (
+            <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  };
+
+  const renderSpecializationSelect = (field: FormField) => {
+    const value = values[field.fieldKey] || "";
+
+    if (!selectedUniversity) {
+      return (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>اختر الجامعة أولاً لتظهر التخصصات المتاحة</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {/* GPA status bar */}
+        <div className="flex flex-wrap gap-2 text-xs mb-1">
+          {studentGpa > 0 && (
+            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-bold">
+              معدلك: {studentGpa}%
+            </span>
+          )}
+          {studentTrack && (
+            <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-bold">
+              القسم: {studentTrack === "scientific" ? "علمي" : "أدبي"}
+            </span>
+          )}
+          {selectedUniversity && studentGpa > 0 && (
+            <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 font-bold">
+              {availableCount} تخصص متاح
+            </span>
+          )}
+        </div>
+
+        {/* Specialization dropdown */}
+        <Select value={value} onValueChange={(v) => handleChange(field.fieldKey, v)}>
+          <SelectTrigger className={value ? "border-green-400 bg-green-50" : ""}>
+            <SelectValue placeholder={field.placeholder || "اختر التخصص..."} />
+          </SelectTrigger>
+          <SelectContent className="max-h-72 overflow-y-auto" dir="rtl">
+            {Object.entries(specsByCategory).map(([cat, specs]) => (
+              <div key={cat}>
+                {/* Category header */}
+                <div className="px-3 py-1.5 text-xs font-bold text-gray-400 bg-gray-50 sticky top-0 border-b border-gray-100">
+                  {cat}
+                </div>
+                {specs.map((s) => (
+                  <SelectItem
+                    key={s.id}
+                    value={s.name}
+                    disabled={!s.trackOk}
+                    className={
+                      !s.trackOk
+                        ? "opacity-40 line-through"
+                        : s.gpaOk
+                        ? "text-gray-800"
+                        : "text-orange-700"
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span>{s.name}</span>
+                      <span className={`text-xs shrink-0 font-semibold px-1.5 py-0.5 rounded ${
+                        !s.trackOk
+                          ? "bg-gray-100 text-gray-400"
+                          : s.gpaOk
+                          ? "bg-green-100 text-green-700"
+                          : "bg-orange-100 text-orange-600"
+                      }`}>
+                        {s.minGpa}%+
+                        {s.gpaOk && s.trackOk && <CheckCircle size={10} className="inline mr-0.5" />}
+                        {!s.gpaOk && s.trackOk && <Lock size={10} className="inline mr-0.5" />}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Warning if selected spec requires higher GPA */}
+        {value && (() => {
+          const sel = annotatedSpecs.find(s => s.name === value);
+          if (sel && !sel.gpaOk && studentGpa > 0) {
+            return (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-50 border border-orange-200 text-xs text-orange-700">
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  هذا التخصص يتطلب معدل <strong>{sel.minGpa}%+</strong> ومعدلك <strong>{studentGpa}%</strong>.
+                  المؤسسة توفر خصومات استثنائية قد تتجاوز سقف القبول العادي.
+                </span>
+              </div>
+            );
+          }
+          if (sel && sel.available) {
+            return (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">
+                <CheckCircle size={14} className="shrink-0" />
+                <span>ممتاز! معدلك مؤهّل لهذا التخصص.</span>
+              </div>
+            );
+          }
+          return null;
+        })()}
+      </div>
+    );
+  };
+
+  const renderField = useCallback((field: FormField) => {
     const value = values[field.fieldKey] || "";
 
     switch (field.fieldType) {
+      case "university_select":
+        return renderUniversitySelect(field);
+
+      case "specialization_select":
+        return renderSpecializationSelect(field);
+
       case "textarea":
         return (
           <Textarea
@@ -234,9 +425,10 @@ export default function Register() {
           />
         );
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, otherValues, fileData, universities, fields, annotatedSpecs, specsByCategory, selectedUniversity, studentGpa, studentTrack, availableCount]);
 
-  // ── Success screen ───────────────────────────────────────────────────────────
+  // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 py-16 items-center justify-center">
@@ -261,7 +453,6 @@ export default function Register() {
     );
   }
 
-  // ── Page header (shared across modes) ───────────────────────────────────────
   const pageHeader = (
     <div className="bg-primary p-8 text-center text-white">
       <GraduationCap className="mx-auto mb-3" size={40} />
@@ -270,7 +461,7 @@ export default function Register() {
     </div>
   );
 
-  // ── Mode: select ─────────────────────────────────────────────────────────────
+  // ── Mode: select ──────────────────────────────────────────────────────────
   if (mode === "select") {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 py-16">
@@ -284,14 +475,9 @@ export default function Register() {
             <div className="p-8">
               <p className="text-center text-gray-500 mb-8 text-sm">كيف تريد التسجيل؟</p>
               <div className="grid md:grid-cols-2 gap-5">
-                {/* Nassir mode */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setMode("nassir");
-                    setTimeout(() => window.dispatchEvent(new CustomEvent("nassir:open")), 300);
-                  }}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => { setMode("nassir"); setTimeout(() => window.dispatchEvent(new CustomEvent("nassir:open")), 300); }}
                   className="relative flex flex-col items-center text-center p-7 rounded-2xl border-2 border-primary bg-gradient-to-br from-primary/5 to-blue-50 hover:from-primary/10 hover:to-blue-100 transition-all group shadow-sm"
                 >
                   <span className="absolute -top-3 right-4 bg-primary text-white text-xs font-bold px-3 py-0.5 rounded-full shadow">موصى به ⭐</span>
@@ -299,19 +485,15 @@ export default function Register() {
                     <Bot size={32} className="text-primary" />
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">🤖 التسجيل عبر ناصر</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    مساعدنا الذكي يسألك ويملأ الاستمارة تلقائياً — أسرع وأسهل!
-                  </p>
+                  <p className="text-gray-500 text-sm leading-relaxed">مساعدنا الذكي يسألك ويملأ الاستمارة تلقائياً — أسرع وأسهل!</p>
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
                     <span className="bg-green-100 text-green-700 text-xs px-2.5 py-1 rounded-full font-medium">⚡ أسرع بـ 5 دقائق</span>
                     <span className="bg-blue-100 text-blue-700 text-xs px-2.5 py-1 rounded-full font-medium">🎓 توجيه أكاديمي مجاني</span>
                   </div>
                 </motion.button>
 
-                {/* Manual mode */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   onClick={() => setMode("manual")}
                   className="flex flex-col items-center text-center p-7 rounded-2xl border-2 border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 transition-all group shadow-sm"
                 >
@@ -319,9 +501,7 @@ export default function Register() {
                     <PenLine size={32} className="text-gray-600" />
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">✍️ التسجيل اليدوي</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    أملأ النموذج بنفسك — تحكّم كامل في جميع بياناتك.
-                  </p>
+                  <p className="text-gray-500 text-sm leading-relaxed">أملأ النموذج بنفسك — تحكّم كامل في جميع بياناتك.</p>
                   <div className="mt-4">
                     <span className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full font-medium">📋 نموذج منظّم</span>
                   </div>
@@ -334,7 +514,7 @@ export default function Register() {
     );
   }
 
-  // ── Mode: nassir ─────────────────────────────────────────────────────────────
+  // ── Mode: nassir ──────────────────────────────────────────────────────────
   if (mode === "nassir") {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 py-16">
@@ -351,9 +531,8 @@ export default function Register() {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-3">ناصر جاهز لمساعدتك! 🤖</h2>
               <p className="text-gray-500 text-sm mb-6 leading-relaxed max-w-sm mx-auto">
-                انقر على زر ناصر في <strong>أسفل يسار الشاشة</strong> للبدء — سيطرح عليك أسئلة بسيطة ويملأ استمارتك تلقائياً.
+                انقر على زر ناصر في <strong>أسفل يسار الشاشة</strong> للبدء.
               </p>
-
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800 text-right space-y-2">
                 <p className="font-bold">📋 ما ستحتاجه:</p>
                 <ul className="space-y-1 text-amber-700">
@@ -363,12 +542,10 @@ export default function Register() {
                   <li>• التخصص الذي تريده</li>
                 </ul>
               </div>
-
               <div className="flex items-center gap-3 mb-6 p-3 bg-green-50 rounded-xl border border-green-200">
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shrink-0" />
                 <p className="text-green-700 text-sm font-medium">ناصر متاح الآن ومستعد لمساعدتك</p>
               </div>
-
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("nassir:open"))}
                 className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-6 rounded-xl transition-colors mb-4 flex items-center justify-center gap-2"
@@ -376,7 +553,6 @@ export default function Register() {
                 <Bot size={20} />
                 ابدأ التسجيل مع ناصر
               </button>
-
               <button
                 onClick={() => setMode("select")}
                 className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mx-auto transition-colors"
@@ -391,7 +567,7 @@ export default function Register() {
     );
   }
 
-  // ── Mode: manual ─────────────────────────────────────────────────────────────
+  // ── Mode: manual ──────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 py-16">
       <div className="container mx-auto px-4 max-w-3xl">
@@ -403,13 +579,10 @@ export default function Register() {
           <div className="bg-primary p-8 text-center text-white">
             <GraduationCap className="mx-auto mb-3" size={40} />
             <h1 className="text-3xl font-bold mb-2">التسجيل اليدوي</h1>
-            <p className="text-white/80">
-              املأ النموذج أدناه وسيتم التواصل معك من قِبل فريق المؤسسة
-            </p>
+            <p className="text-white/80">أدخل بياناتك واختر تخصصك المناسب لمعدلك</p>
           </div>
 
           <div className="p-8">
-            {/* Back button */}
             <button
               onClick={() => setMode("select")}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-6 transition-colors"
@@ -440,13 +613,10 @@ export default function Register() {
                   >
                     <Bot size={18} className="text-blue-600 shrink-0" />
                     <p className="text-blue-700 text-xs flex-1">
-                      هل تريد مساعدة في ملء النموذج؟{" "}
+                      هل تريد مساعدة في اختيار التخصص المناسب لمعدلك؟{" "}
                       <button
                         type="button"
-                        onClick={() => {
-                          setMode("nassir");
-                          setTimeout(() => window.dispatchEvent(new CustomEvent("nassir:open")), 300);
-                        }}
+                        onClick={() => { setMode("nassir"); setTimeout(() => window.dispatchEvent(new CustomEvent("nassir:open")), 300); }}
                         className="font-bold underline"
                       >
                         استخدم ناصر المساعد الذكي
@@ -456,25 +626,29 @@ export default function Register() {
                 </AnimatePresence>
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  {fields.map((field) => (
-                    <div
-                      key={field.id}
-                      className={
-                        field.fieldType === "textarea" ||
-                        field.fieldType === "file" ||
-                        field.fieldType === "image" ||
-                        field.fieldType === "select_with_other"
-                          ? "md:col-span-2"
-                          : ""
-                      }
-                    >
-                      <Label htmlFor={`field-${field.id}`} className="mb-1.5 block">
-                        {field.label}
-                        {field.required && <span className="text-red-500 mr-1">*</span>}
-                      </Label>
-                      {renderField(field)}
-                    </div>
-                  ))}
+                  {fields.map((field) => {
+                    const isWide =
+                      field.fieldType === "textarea" ||
+                      field.fieldType === "file" ||
+                      field.fieldType === "image" ||
+                      field.fieldType === "select_with_other" ||
+                      field.fieldType === "specialization_select" ||
+                      field.fieldType === "university_select";
+                    return (
+                      <div key={field.id} className={isWide ? "md:col-span-2" : ""}>
+                        <Label htmlFor={`field-${field.id}`} className="mb-1.5 block">
+                          {field.label}
+                          {field.required && <span className="text-red-500 mr-1">*</span>}
+                          {field.fieldType === "specialization_select" && selectedUniversity && (
+                            <span className="text-xs text-gray-400 font-normal mr-2">
+                              ({selectedUniversity.name})
+                            </span>
+                          )}
+                        </Label>
+                        {renderField(field)}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <Button
