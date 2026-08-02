@@ -13,6 +13,8 @@ import { Layout } from "@/components/layout/Layout";
   import NotFound from "./not-found";
   import NassirPage from "./Nassir";
   import TrainingRegister from "./TrainingRegister";
+import TrainerApplication from "./TrainerApplication";
+import TrainingSurvey from "./TrainingSurvey";
 
   import AdminLogin from "./admin/Login";
   import Dashboard from "./admin/Dashboard";
@@ -59,6 +61,8 @@ import { Layout } from "@/components/layout/Layout";
               <Route path="/partners-success" component={Partners} />
               <Route path="/register" component={Register} />
               <Route path="/training-register" component={TrainingRegister} />
+              <Route path="/trainer-application" component={TrainerApplication} />
+              <Route path="/training-survey" component={TrainingSurvey} />
               <Route path="/contact" component={Contact} />
               <Route path="/find-us" component={FindUs} />
               <Route path="/nassir" component={NassirPage} />
