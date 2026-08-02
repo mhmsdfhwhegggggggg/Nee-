@@ -33,6 +33,8 @@ import { useState, useEffect } from "react";
           { href: "/programs#discounts", label: "التخفيضات الجامعية" },
           { href: "/programs#insurance", label: "التأمين الصحي" },
           { href: "/training-register", label: "سجّل في برنامج ←" },
+          { href: "/trainer-application", label: "انضم كمدرب ←" },
+          { href: "/training-survey", label: "استطلاع التدريب" },
         ],
       },
       {
