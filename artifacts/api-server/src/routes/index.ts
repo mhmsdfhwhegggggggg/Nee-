@@ -16,6 +16,8 @@ import { Router, type IRouter } from "express";
   import facebookWebhookRouter from "./webhooks/facebook";
   import whatsappWebhookRouter from "./webhooks/whatsapp";
   import telegramWebhookRouter from "./webhooks/telegram";
+import trainerApplicationRouter from "./trainer-application";
+import trainingSurveyRouter from "./training-survey";
 
   const router: IRouter = Router();
 
@@ -36,6 +38,8 @@ import { Router, type IRouter } from "express";
   router.use(facebookWebhookRouter);
   router.use(whatsappWebhookRouter);
   router.use(telegramWebhookRouter);
+  router.use(trainerApplicationRouter);
+  router.use(trainingSurveyRouter);
 
   export default router;
   
