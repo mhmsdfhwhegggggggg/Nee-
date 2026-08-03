@@ -57,6 +57,7 @@ export default function Register() {
   const [otherValues, setOtherValues] = useState<Record<string, string>>({});
   const [fileData, setFileData] = useState<Record<string, { name: string; base64: string }>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
 
   // Universities for smart dropdowns
   const [universities, setUniversities] = useState<University[]>([]);
@@ -157,17 +158,35 @@ export default function Register() {
   // --- Submit ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    for (const field of fields) {
-      const val =
-        field.fieldType === "select_with_other" && values[field.fieldKey] === "__other__"
-          ? otherValues[field.fieldKey]
-          : values[field.fieldKey];
-      if (field.required && !val?.trim()) {
-        toast({ variant: "destructive", title: "حقل مطلوب", description: `يرجى ملء حقل "${field.label}"` });
+    // Collect ALL invalid required fields at once for better UX
+      const invalid = new Set<string>();
+      let firstInvalidId: number | null = null;
+      for (const field of fields) {
+        const val =
+          field.fieldType === "select_with_other" && values[field.fieldKey] === "__other__"
+            ? otherValues[field.fieldKey]
+            : field.fieldType === "file" || field.fieldType === "image"
+            ? (fileData[field.fieldKey]?.base64 || values[field.fieldKey])
+            : values[field.fieldKey];
+        if (field.required && !val?.trim()) {
+          invalid.add(field.fieldKey);
+          if (firstInvalidId === null) firstInvalidId = field.id;
+        }
+      }
+      if (invalid.size > 0) {
+        setInvalidFields(invalid);
+        const el = document.getElementById(`field-${firstInvalidId}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        const firstField = fields.find(f => invalid.has(f.fieldKey));
+        toast({
+          variant: "destructive",
+          title: `يرجى إكمال ${invalid.size} حقل مطلوب`,
+          description: `ابدأ بحقل "${firstField?.label || ""}"`,
+        });
         return;
       }
-    }
-    setIsSubmitting(true);
+      setInvalidFields(new Set());
+          setIsSubmitting(true);
     try {
       const body: Record<string, string> = { registrationSource: "manual" };
       for (const field of fields) {
@@ -635,8 +654,8 @@ export default function Register() {
                       field.fieldType === "specialization_select" ||
                       field.fieldType === "university_select";
                     return (
-                      <div key={field.id} className={isWide ? "md:col-span-2" : ""}>
-                        <Label htmlFor={`field-${field.id}`} className="mb-1.5 block">
+                      <div key={field.id} id={`field-${field.id}`} className={`${isWide ? "md:col-span-2" : ""} ${invalidFields.has(field.fieldKey) ? "ring-2 ring-red-400 rounded-xl p-3 -mx-1 bg-red-50/40" : ""}`}>
+                        <Label htmlFor={`field-${field.id}`} className={`mb-1.5 block ${invalidFields.has(field.fieldKey) ? "text-red-600 font-semibold" : ""}`}>
                           {field.label}
                           {field.required && <span className="text-red-500 mr-1">*</span>}
                           {field.fieldType === "specialization_select" && selectedUniversity && (
