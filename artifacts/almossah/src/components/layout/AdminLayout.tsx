@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useGetAdminMe } from "@workspace/api-client-react";
-import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap, Bell, Bot, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Handshake, BarChart, LogOut, Settings, Menu, Image as ImageIcon, Phone, KeyRound, ClipboardEdit, GraduationCap, Bell, Bot, ClipboardList, UserCog, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
 import { clearAdminToken, getAdminToken } from "@/lib/admin-auth";
@@ -114,6 +114,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { href: "/admin/nassir", label: "ناصر المساعد الذكي", icon: <Bot size={20} /> },
     { href: "/admin/register-form-config", label: "إدارة نموذج التسجيل", icon: <ClipboardEdit size={20} /> },
     { href: "/admin/training-form", label: "نماذج تسجيل الدورات", icon: <ClipboardList size={20} /> },
+    { href: "/admin/trainer-applications", label: "طلبات انضمام المدربين", icon: <UserCog size={20} /> },
+    { href: "/admin/training-surveys", label: "استطلاعات التدريب", icon: <BarChart2 size={20} /> },
     { href: "/admin/university-specialties", label: "تخصصات الجامعات", icon: <GraduationCap size={20} /> },
     { href: "/admin/news", label: "الأخبار والفعاليات", icon: <FileText size={20} /> },
     { href: "/admin/slides", label: "شرائح الصفحة الرئيسية", icon: <ImageIcon size={20} /> },
