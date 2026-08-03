@@ -118,6 +118,8 @@ export default function TrainingSurvey() {
   const [otherGoal, setOtherGoal] = useState("");
 
   // Section 7
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [wantsNotification, setWantsNotification] = useState("");
   const [notifPhone, setNotifPhone] = useState("");
   const [notifEmail, setNotifEmail] = useState("");
@@ -141,6 +143,10 @@ export default function TrainingSurvey() {
       return;
     }
 
+    if (!contactPhone.trim() && !contactEmail.trim()) {
+      toast({ variant: "destructive", title: "بيانات التواصل مطلوبة", description: "يرجى إدخال رقم الهاتف أو البريد الإلكتروني في القسم السابع" });
+      return;
+    }
     setIsSubmitting(true);
     try {
       const formData = {
@@ -168,9 +174,11 @@ export default function TrainingSurvey() {
           "تحديد أخرى": otherGoal,
         },
         "القسم السابع - التواصل والمتابعة": {
-          "يرغب في الإبلاغ": wantsNotification,
-          "رقم الهاتف": notifPhone,
-          "البريد الإلكتروني": notifEmail,
+          "رقم الهاتف للتواصل": contactPhone,
+          "البريد الإلكتروني للتواصل": contactEmail,
+          "يرغب في الإبلاغ بالبرامج القادمة": wantsNotification,
+          "هاتف الإبلاغ": notifPhone,
+          "بريد الإبلاغ": notifEmail,
         },
         "القسم الثامن - المقترحات": suggestions,
       };
@@ -479,6 +487,28 @@ export default function TrainingSurvey() {
 
           {/* Section 7 */}
           <SectionCard title="القسم السابع: التواصل والمتابعة" number={7}>
+            {/* Contact fields - always visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pb-6 mb-4 border-b border-gray-100">
+              <div>
+                <FieldLabel required>رقم الهاتف للتواصل</FieldLabel>
+                <Input
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="7xx xxx xxx"
+                  type="tel"
+                />
+              </div>
+              <div>
+                <FieldLabel>البريد الإلكتروني للتواصل <span className="text-gray-400 font-normal text-xs">(اختياري)</span></FieldLabel>
+                <Input
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="example@email.com"
+                  type="email"
+                />
+              </div>
+              <p className="md:col-span-2 text-xs text-gray-400 -mt-2">يرجى إدخال رقم الهاتف أو البريد الإلكتروني أو كليهما حتى نتمكن من التواصل معك</p>
+            </div>
             <div>
               <FieldLabel>
                 هل ترغب في إبلاغك بالبرامج التدريبية القادمة التي تتوافق مع اهتماماتك؟
