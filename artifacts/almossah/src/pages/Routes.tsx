@@ -30,6 +30,8 @@ import TrainingSurvey from "./TrainingSurvey";
   import TrainingFormBuilder from "./admin/TrainingFormBuilder";
   import NassirAdmin from "./admin/Nassir";
   import UniversitySpecialties from "./admin/UniversitySpecialties";
+  import TrainerApplicationsAdmin from "./admin/TrainerApplications";
+  import TrainingSurveysAdmin from "./admin/TrainingSurveys";
 
   export default function AppRoutes() {
     return (
@@ -48,6 +50,8 @@ import TrainingSurvey from "./TrainingSurvey";
         <Route path="/admin/contact-info" component={ContactInfoAdmin} />
         <Route path="/admin/settings" component={Settings} />
         <Route path="/admin/university-specialties" component={UniversitySpecialties} />
+        <Route path="/admin/trainer-applications" component={TrainerApplicationsAdmin} />
+        <Route path="/admin/training-surveys" component={TrainingSurveysAdmin} />
 
         <Route path="/.*">
           <Layout>
